@@ -10,10 +10,12 @@ resX = 400
 resY = 400
 
 SCREEN = pygame.display.set_mode((resX, resY))
+pygame.display.set_caption("Bounce")
 WHITE = (255, 255, 255)
 BLUE = (20, 192, 255)
 RED = (255, 0, 0)
 myLog = GameLog.Logger(SCREEN)
+myLog.maxlines = 10
 class Ball:
     def __init__(self, surf, color, coords, radius, velocity, acceleration, attr = None):
     #Creates an instance of Ball
@@ -80,6 +82,7 @@ class BallGroup:
 
 myGroup = BallGroup()
 frames = 0 #counts how many frames the screen has drawn
+mouse = (0, 0)
 while True:
     if pygame.mouse.get_pressed() == (1, 0, 0):
         myGroup.add(Ball(SCREEN, RED, (random.randint(10, 390), random.randint(10, 390)), 10, (random.randint(-10, 10), random.randint(-10, 10)), (0, .5)))
@@ -88,8 +91,8 @@ while True:
         myGroup.add(Ball(SCREEN, RED, (int(resX / 2), 0), 10, (0, 0), (0, .5)))
         
     SCREEN.fill(WHITE) #Blanks screen
-    
-    myLog.log(frames) #Prints out debug text on the left hand side of screen
+    if pygame.mouse.get_focused():
+        myLog.log(mouse) #Prints out debug text on the left hand side of screen
     myGroup.update() #Updates physics on balls
     myGroup.draw() #Draws balls on screen
     
@@ -97,6 +100,15 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
-            
+        if event.type == KEYDOWN:
+            keys = pygame.key.get_pressed()
+            if keys[K_LMETA] or keys[K_RMETA]:
+                if keys[K_q] or keys[K_w]:
+                    pygame.quit()
+                    sys.exit()
+
+        if event.type == MOUSEMOTION:
+            mouse = pygame.mouse.get_pos()
+
     pygame.display.update()
     clock.tick(framerate)
