@@ -1,7 +1,8 @@
-import pygame, sys
+import pygame
+import sys
 from pygame.locals import *
 from pygame import gfxdraw
-import GameLog
+import gamelog
 import random
 pygame.init()
 clock = pygame.time.Clock()
@@ -14,7 +15,7 @@ pygame.display.set_caption("Bounce")
 WHITE = (255, 255, 255)
 BLUE = (20, 192, 255)
 RED = (255, 0, 0)
-myLog = GameLog.Logger(SCREEN)
+myLog = gamelog.Logger(SCREEN)
 myLog.maxlines = 10
 
 
@@ -33,7 +34,7 @@ pointlist = [(0, 0), (0, 0), (0, 0), (0, 0)]
 for coords in paddle: #Converts coordinates into polar coordinates
     dist = math.sqrt(coords[0] ** 2 + coords[1] ** 1)
     new_coords = (dist,
-                  math.degrees(math.asin(coords[1] / dist)coords[0])))
+                  math.degrees(math.atan(coords[1] / coords[0])))
     polar_coords.append(new_coords)
 ##End of paddle configuration
 while True:

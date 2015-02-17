@@ -1,7 +1,7 @@
 import pygame, sys
 from pygame.locals import *
 from pygame import gfxdraw
-import GameLog
+import gamelog
 import random
 pygame.init()
 clock = pygame.time.Clock()
@@ -11,25 +11,38 @@ resY = 400
 
 SCREEN = pygame.display.set_mode((resX, resY))
 pygame.display.set_caption("Bounce")
-WHITE = (255, 255, 255)
-BLUE = (20, 192, 255)
+
+WHITE = (255, 255, 255) #Defines colors for graphics
+BLACK = (0, 0, 0)
+BLUE = (0, 106, 255)
 RED = (255, 0, 0)
-myLog = GameLog.Logger(SCREEN)
+YELLOW = (255, 189, 0)
+GREEN = (0, 168, 0)
+
+colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will select a random color to make the next ball.
+
+myLog = gamelog.Logger(SCREEN)
 myLog.maxlines = 10
 class Ball:
     def __init__(self, surf, color, coords, radius, velocity, acceleration, attr = None):
     #Creates an instance of Ball
+
         self.coords = list(coords)
         self.color = list(color)
         self.vel = list(velocity)
         self.acc = list(acceleration)
         self.property = attr #Special property--not used now but can be implemented for something else if needed 
+        self.blurlist = []
         self.surf = surf
         self.radius = radius
 
     def update(self): #Updates the ball's position, velocity, and is where the physics for the ball happen.
         self.vel = [self.vel[0] + self.acc[0], self.vel[1] + self.acc[1]]
-        self.coords = [self.coords[0] + self.vel[0], self.coords[1] + self.vel[1]]
+        
+        self.coords = [self.coords[0] + self.vel[0], 
+                       self.coords[1] + self.vel[1]]
+        
+        self.blurlist = []
         
     def bounceY(self):
         self.vel[1] = -self.vel[1]- self.acc[1]
@@ -38,8 +51,14 @@ class Ball:
         self.vel[0] = -self.vel[0] - self.acc[0]
         
     def draw(self):
-        pygame.gfxdraw.aacircle(self.surf, int(self.coords[0]), int(self.coords[1]), self.radius, self.color) #Draws a smooth circle outline without those jagged pixellated edges
-        pygame.gfxdraw.filled_circle(self.surf, int(self.coords[0]), int(self.coords[1]), self.radius, self.color) #Draws the filled center of the circle
+
+        #Draw a smooth circle outline without those jagged pixellated edges
+        pygame.gfxdraw.aacircle(self.surf, int(self.coords[0]), 
+                                int(self.coords[1]), self.radius, self.color) 
+        #Draw the filled center of the circle 
+        pygame.gfxdraw.filled_circle(self.surf, int(self.coords[0]), 
+                                     int(self.coords[1]), self.radius, self.color) 
+        
         #Circles are kinda like chocolate truffles--smooth on the outside, filled on the inside...
         
 class BallGroup:
@@ -60,13 +79,12 @@ class BallGroup:
         while count < len(self.objects):#Allows the list to become modifiable due to advanced for loops being immutable                            
             items = self.objects[count]
             items.update()
-            if items.coords[1] > resY:
-                del(self.objects[count])
-                items.bounceY()
-            if items.coords[0] > resX or items.coords[0] < 0:
-                #del(self.objects[count])
+            if (items.coords[0] >= resX - items.radius or 
+                    items.coords[0] <= items.radius):
                 items.bounceX()
+                
             if items.coords[1] > resY + 200:
+                #items.bounceY()
                 del(self.objects[count])
  
             count += 1
@@ -85,17 +103,28 @@ frames = 0 #counts how many frames the screen has drawn
 mouse = (0, 0)
 while True:
     if pygame.mouse.get_pressed() == (1, 0, 0):
-        myGroup.add(Ball(SCREEN, RED, (random.randint(10, 390), random.randint(10, 390)), 10, (random.randint(-10, 10), random.randint(-10, 10)), (0, .5)))
+        myGroup.add(Ball(SCREEN, colorlist[random.randint(0, 3)], 
+                        (random.randint(10, 390), random.randint(10, 390)), 10, 
+                        (random.randint(-10, 10), random.randint(-10, 10)), (0, .5)))
+
     frames += 1
-    if frames % 60 == 0: #Drops a ball from top of screen every nth interval.
-        myGroup.add(Ball(SCREEN, RED, (int(resX / 2), 0), 10, (0, 0), (0, .5)))
+    #if frames % 60 == 0: #Drops a ball from top of screen every nth interval.
+        #myGroup.add(Ball(SCREEN, RED, (int(resX / 2), 0), 10, (0, 0), (0, .5)))
         
     SCREEN.fill(WHITE) #Blanks screen
-    if pygame.mouse.get_focused():
-        myLog.log(mouse) #Prints out debug text on the left hand side of screen
     myGroup.update() #Updates physics on balls
     myGroup.draw() #Draws balls on screen
+    if pygame.mouse.get_focused(): #Only draws debug text if mouse is hovering over window
+        myLog.log(str(myGroup.size) + "; " +  
+                  str(round(clock.get_fps(), 0)) + " fps") 
+        #Prints out debug text on the left hand side of screen
     
+    
+    if clock.get_fps() < 55:
+        myLog.color = (255, 0, 0)
+    else:
+        myLog.color = (0, 0, 0)
+        
     for event in pygame.event.get(): #Event handler--all events go here!
         if event.type == QUIT:
             pygame.quit()
