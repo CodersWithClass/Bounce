@@ -21,6 +21,10 @@ GREEN = (0, 168, 0)
 
 colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will select a random color to make the next ball.
 
+surf2 = pygame.Surface((resX, resY), depth = 24)
+surf2.fill(BLACK)
+surf2.set_alpha(128)
+
 myLog = gamelog.Logger(SCREEN)
 myLog.maxlines = 10
 class Ball:
@@ -101,25 +105,31 @@ class BallGroup:
 myGroup = BallGroup()
 frames = 0 #counts how many frames the screen has drawn
 mouse = (0, 0)
+focused = True
+paused = False
 while True:
-    if pygame.mouse.get_pressed() == (1, 0, 0):
-        myGroup.add(Ball(SCREEN, colorlist[random.randint(0, 3)], 
-                        (random.randint(10, 390), random.randint(10, 390)), 10, 
-                        (random.randint(-10, 10), random.randint(-10, 10)), (0, .5)))
-
-    frames += 1
-    #if frames % 60 == 0: #Drops a ball from top of screen every nth interval.
-        #myGroup.add(Ball(SCREEN, RED, (int(resX / 2), 0), 10, (0, 0), (0, .5)))
-        
     SCREEN.fill(WHITE) #Blanks screen
-    myGroup.update() #Updates physics on balls
+    if not paused:
+        if pygame.mouse.get_pressed() == (1, 0, 0) or True:
+            myGroup.add(Ball(SCREEN, colorlist[random.randint(0, 3)], 
+                            (random.randint(10, 390), random.randint(10, 390)), 10, 
+                            (random.randint(-10, 10), random.randint(-10, 10)), (0, .5)))
+    
+         #if frames % 60 == 0: #Drops a ball from top of screen every nth interval.
+            #myGroup.add(Ball(SCREEN, RED, (int(resX / 2), 0), 10, (0, 0), (0, .5)))
+            
+        frames += 1
+        myGroup.update() #Updates physics on balls only if game isn't paused
+        
     myGroup.draw() #Draws balls on screen
-    if pygame.mouse.get_focused(): #Only draws debug text if mouse is hovering over window
-        myLog.log(str(myGroup.size) + "; " +  
-                  str(round(clock.get_fps(), 0)) + " fps") 
-        #Prints out debug text on the left hand side of screen
-    
-    
+       
+    myLog.log(str(myGroup.size) + "; " +  
+              str(round(clock.get_fps(), 0)) + " fps; " +
+              str(paused)) 
+    #Prints out debug text on the left hand side of screen
+    if paused:
+        SCREEN.blit(surf2, (0, 0))
+        
     if clock.get_fps() < 55:
         myLog.color = (255, 0, 0)
     else:
@@ -129,15 +139,24 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
+        if event.type == ACTIVEEVENT:
+            print(event.type)
+            focused = pygame.display.get_active()
+            if focused:
+                paused = True
         if event.type == KEYDOWN:
             keys = pygame.key.get_pressed()
             if keys[K_LMETA] or keys[K_RMETA]:
                 if keys[K_q] or keys[K_w]:
                     pygame.quit()
                     sys.exit()
+            if keys[K_ESCAPE]:
+                if focused:
+                    paused = not(paused)
 
         if event.type == MOUSEMOTION:
             mouse = pygame.mouse.get_pos()
+           # focused = pygame.mouse.get_focused() #Mouse isn't focused when it isn't within screen bounds.
 
     pygame.display.update()
     clock.tick(framerate)

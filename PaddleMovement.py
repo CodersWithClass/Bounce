@@ -25,6 +25,9 @@ target_theta = 0 #The position the paddle should be in
 current_theta = 0#The current position of the paddle
 d_theta = 0 #Change of angle
 max_d_theta = 5 #Maximum change of angle
+max_theta = 45
+min_theta = -45
+damp = .2
 scale = 1
 
 paddle_center = (resX / 2, resY / 2)
@@ -34,21 +37,23 @@ pointlist = [(0, 0), (0, 0), (0, 0), (0, 0)]
 for coords in paddle: #Converts coordinates into polar coordinates
     dist = math.sqrt(coords[0] ** 2 + coords[1] ** 1)
     new_coords = (dist,
-                  math.degrees(math.atan(coords[1] / coords[0])))
+                  math.degrees(math.atan2(coords[1], coords[0])))
     polar_coords.append(new_coords)
 ##End of paddle configuration
 while True:
     SCREEN.fill(WHITE) #Blanks screen
     
-    target_theta += d_theta
-    current_theta += (target_theta - current_theta) * .1
+    target_theta -= d_theta
+    print(target_theta)
+    current_theta += (target_theta - current_theta) * damp
     myLog.log(current_theta)
     for num in range(0, len(polar_coords)):
         items = polar_coords[num]
 
-        pointlist[num] = (items[0] * math.cos(math.radians(items[1] + current_theta)) + paddle_center[0],
-                          items[0] * math.sin(math.radians(items[1] + current_theta)) + paddle_center[1])
-    print(pointlist)
+        pointlist[num] = (items[0] * math.cos(math.radians(items[1] + current_theta)) + 
+                          paddle_center[0],
+                          items[0] * math.sin(math.radians(items[1] + current_theta)) + 
+                          paddle_center[1])
     pygame.draw.polygon(SCREEN, BLUE, pointlist, 0)
 
     for event in pygame.event.get(): #Event handler--all events go here!
