@@ -140,7 +140,6 @@ while True:
             pygame.quit()
             sys.exit()
         if event.type == ACTIVEEVENT:
-            print(event.type)
             focused = pygame.display.get_active()
             if focused:
                 paused = True
@@ -156,7 +155,7 @@ while True:
 
         if event.type == MOUSEMOTION:
             mouse = pygame.mouse.get_pos()
-           # focused = pygame.mouse.get_focused() #Mouse isn't focused when it isn't within screen bounds.
+            #focused = pygame.mouse.get_focused() #Mouse isn't focused when it isn't within screen bounds.
 
     pygame.display.update()
     clock.tick(framerate)
