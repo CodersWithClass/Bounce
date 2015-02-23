@@ -64,7 +64,7 @@ class Ball:
                                      int(self.coords[1]), self.radius, self.color) 
         
         #Circles are kinda like chocolate truffles--smooth on the outside, filled on the inside...
-        
+
 class BallGroup:
     def __init__(self):
         self.objects = []
@@ -134,15 +134,17 @@ while True:
         myLog.color = (255, 0, 0)
     else:
         myLog.color = (0, 0, 0)
-        
     for event in pygame.event.get(): #Event handler--all events go here!
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
         if event.type == ACTIVEEVENT:
-            focused = pygame.display.get_active()
-            if focused:
+            focused = event.gain
+            if not focused:
                 paused = True
+                print("Red Light!")
+            else:
+                print("Green Light!")
         if event.type == KEYDOWN:
             keys = pygame.key.get_pressed()
             if keys[K_LMETA] or keys[K_RMETA]:
@@ -155,7 +157,6 @@ while True:
 
         if event.type == MOUSEMOTION:
             mouse = pygame.mouse.get_pos()
-            #focused = pygame.mouse.get_focused() #Mouse isn't focused when it isn't within screen bounds.
 
     pygame.display.update()
     clock.tick(framerate)

@@ -1,2 +1,19 @@
 Clicky:
-Python wrapper that gives games button control, and other Pygame-based UI features. 
+	Python wrapper that gives games button control, and other Pygame-based UI features. 
+	
+	Initialization:
+		Required:
+			Button Size
+			Starting Position
+			Move-X
+			Move-Y
+			Text
+		Options:
+			Color (default gray)
+			Text Color (default white or black depending on brightness of background color)
+			Highlight Color (Changes color of button when moused over)
+			Active Color (Changes color of button when pressed)
+			
+
+PaddleMovement:
+Module to test paddle movement, rotation, and collisions
