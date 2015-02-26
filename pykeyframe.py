@@ -5,7 +5,7 @@ class Action:
         self.start = start
         self.end = end
         self.frames = frames
-        self.mode = mode
+        self.mode = mode #Interpolation Mode--for now it's only linear, but some more types are coming!
         self.frame = 0 #What frame the animator is on currently
         
         self.framelist = [] 

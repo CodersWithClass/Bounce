@@ -3,7 +3,6 @@ import pygame, sys
 from pygame.locals import *
 from pygame import gfxdraw
 import gamelog
-import random
 pygame.init()
 clock = pygame.time.Clock()
 framerate = 60
@@ -25,6 +24,12 @@ attrlist = ["RED", "YELLOW", "GREEN", "BLUE"]
 myLog = gamelog.Logger(SCREEN)
 myLog.maxlines = 10
 #End Setup Thingies##############
+
+#Scoring#########
+score = 0
+consecutive = 0 #How many balls in a row did the user hit?
+strikes = 0 #How many times did user miss?
+#End Scoring#####
 
 #Ball and BallGroup Class to check for compatibility with final game
 class Ball:
@@ -80,31 +85,56 @@ mouse = (0, 0)
 myBall = Ball(SCREEN, RED, 
                     mouse, 10, 
                     (0, 0), (0, 0))
-myGroup.add(myBall)
+
+
+ballGroup = [myBall]
 backcolor = WHITE
+count = 0 #Counter variable for list iteration to make list mutable
 #End init. code
 while True:
-    SCREEN.fill(WHITE)
+    SCREEN.fill(backcolor)
    
+    #Edits current ball's parameters (ball being used as cursor)
     myBall.coords = mouse
     myBall.color = colorlist[ballcolor]
     myBall.property = attrlist[ballcolor]
-    if pygame.mouse.get_pressed() == (1, 0, 0):
-        myGroup.add(Ball(SCREEN, colorlist[ballcolor], mouse, 10, (0, -10), (0, 0), attrlist[ballcolor]))
-    myLog.log(len(myGroup.objects))
-    for items in myGroup.objects:
-        items.update()
-        items.draw()
-        attr = items.property
-        if items.goalcollide:
-            print("COLLIDE")
-            if items.coords[0] in goallist[attrlist.index(attr)]:
-                print("CORRECT!")
-            myGroup.remove(items)
+    #End cursor properties
+    
+    
+    #This section of code updates the balls' positions and keeps track of scoring.
+    while count < len(ballGroup):#Allows the list to become modifiable due to advanced for loops being immutable       
+            items = ballGroup[count]
+            items.update()
+            if (items.coords[0] >= resX - items.radius or 
+                    items.coords[0] <= items.radius):
+                items.bounceX()
+                
+            if items.coords[1] < GOALHEIGHT and count != 0:
+                #items.bounceY()
+                if items.coords[0] in goallist[attrlist.index(items.property)]: #Correct Goal
+                    consecutive += 1
+                    score += 1
+                    backcolor = (0, 255, 0)
+                else: #Incorrect Goal
+                    backcolor = (180, 0, 0)
+                    consecutive = 0
+                    strikes += 1
+                    
+                del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
+            count += 1
+            items.draw()
+            
+            
+    count = 0    #Resets the for loop  
+    
     for num in range(0, 4):
         pygame.draw.rect(SCREEN, colorlist[3 - num],
                                  ((resX / 4) * num, 0, (resX / 4), GOALHEIGHT))
         
+    myLog.log("SCORE: " + str(score) + "; " + 
+              str(consecutive) + " IN A ROW; " + 
+              str(strikes) + " STRIKES") 
+            
     for event in pygame.event.get(): #Event handler--all events go here!
         if event.type == QUIT:
             pygame.quit()
@@ -124,9 +154,18 @@ while True:
                 ballcolor -= 1
                 if ballcolor < 0:
                     ballcolor = 3
-                    
+            if keys[K_ESCAPE]:
+                score = 0
+                strikes = 0
+                consecutive = 0
+                backcolor = WHITE
         if event.type == MOUSEMOTION:
             mouse = pygame.mouse.get_pos()
+        if event.type == MOUSEBUTTONDOWN:
+            if pygame.mouse.get_pressed() == (1, 0, 0):
+                ballGroup.append(Ball(SCREEN, colorlist[ballcolor], 
+                                 mouse, 10, (0, -10), (0, 0), 
+                                 attrlist[ballcolor]))
 
     pygame.display.update()
     clock.tick(framerate)
