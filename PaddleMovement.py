@@ -43,10 +43,11 @@ for coords in paddle: #Converts coordinates into polar coordinates
 while True:
     SCREEN.fill(WHITE) #Blanks screen
     
+    ###START PADDLE CODE#################################################################################
     target_theta -= d_theta
-    print(target_theta)
+    #print(target_theta)
     current_theta += (target_theta - current_theta) * damp
-    myLog.log(current_theta)
+    #myLog.log(current_theta)
     for num in range(0, len(polar_coords)):
         items = polar_coords[num]
 
@@ -55,7 +56,10 @@ while True:
                           items[0] * math.sin(math.radians(items[1] + current_theta)) + 
                           paddle_center[1])
     pygame.draw.polygon(SCREEN, BLUE, pointlist, 0)
-
+    pygame.gfxdraw.aapolygon(SCREEN, pointlist, BLUE)
+    pygame.draw.line(SCREEN, RED, pointlist[0], pointlist[1], 5)
+    
+    ###END PADDLE CODE#################################################################################
     for event in pygame.event.get(): #Event handler--all events go here!
         if event.type == QUIT:
             pygame.quit()
