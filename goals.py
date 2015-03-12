@@ -34,6 +34,7 @@ colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will s
 attrlist = ["RED", "YELLOW", "GREEN", "BLUE"]
 myLog = gamelog.Logger(SCREEN)
 myLog.maxlines = 10
+myLog.color = BLACK
 #End Setup Thingies##############
 
 #Scoring#########
@@ -83,10 +84,11 @@ class Ball:
         
 
 #Goal Code Start########
-BLUEGOAL = range(0, int(resX / 4))
-GREENGOAL = range(int(resX / 4), int(resX / 2))
-YELLOWGOAL = range(int(resX / 2), int(resX * 3 / 4))
-REDGOAL = range(int(resX * 3 / 4), int(resX))
+tol = 20 #Adds a bit of "give" to the goals to count "close" shots.
+BLUEGOAL = range(0 - tol, int(resX / 4) + tol)
+GREENGOAL = range(int(resX / 4) - tol, int(resX / 2) + tol)
+YELLOWGOAL = range(int(resX / 2) - tol, int(resX * 3 / 4) + tol)
+REDGOAL = range(int(resX * 3 / 4) - tol, int(resX) + tol)
 GOALHEIGHT = 25
 goallist = [REDGOAL, YELLOWGOAL, GREENGOAL, BLUEGOAL]
 #Goal Code End########
@@ -125,6 +127,9 @@ for coords in paddle: #Converts coordinates into polar coordinates, in radians
     polar_coords.append(new_coords)
 screencolor = WHITE
 ##End of paddle configuration#################################################################
+centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
+                int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
+
 while True:
     SCREEN.fill(screencolor)
    
@@ -135,9 +140,8 @@ while True:
     #End cursor properties
     
     
-    #This section of code updates the balls' positions and keeps track of scoring.
     
-     ###START PADDLE CODE 
+    ###START PADDLE MOVEMENT CODE #################################################################
     target_theta -= d_theta
     #print(target_theta)
     current_theta += (target_theta - current_theta) * damp
@@ -153,9 +157,10 @@ while True:
     pygame.gfxdraw.aapolygon(SCREEN, pointlist, BLUE)
     pygame.draw.line(SCREEN, RED, pointlist[0], pointlist[1], 1)
     
-    ##END PADDLE CODE
+    ##END PADDLE MOVEMENT CODE #################################################################
     
-    ######BALL UPDATE CODE########################################
+    
+    ###### BALL UPDATE CODE ########################################
     
     while count < len(ballGroup):#Allows the list to become modifiable due to advanced for loops being immutable       
             items = ballGroup[count]
@@ -166,7 +171,7 @@ while True:
                 
             if items.coords[1] < GOALHEIGHT and count != 0:
                 #items.bounceY()
-                if items.coords[0] in goallist[attrlist.index(items.property)]: #Correct Goal
+                if int(items.coords[0]) in goallist[attrlist.index(items.property)]: #Correct Goal
                     consecutive += 1
                     score += 1
                     backcolor = (0, 255, 0)
@@ -176,7 +181,10 @@ while True:
                     strikes += 1
                     
                 del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
-            ##BEGIN COLLIDER CODE
+                
+                
+            ##BEGIN COLLIDER CODE#################################################################
+            
             p1 = pointlist[0]#Upper left corner of paddle mesh
             p2 = pointlist[1]#Upper right corner of paddle mesh
 
@@ -188,40 +196,40 @@ while True:
             
             if abs(theta1) <= PI/2 and abs(theta2) <= PI/2 and dist < 10:
                 screencolor = (0, 255, 0)
+                #Paddle physics are only enabled if the ball is in contact with the ball
+                
                 #PADDLE PHYSICS##################################################################
-                centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
-                int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
-                pygame.draw.circle(SCREEN, GREEN, centerpoint, 10)
+                #This section includes any code that modifies the ball's velocity as a direct result of the paddle
                 # myLog.log(str(items.vel[0]) + ';' + str(items.vel[1]))
                 length = math.sqrt(items.vel[0]**2 + items.vel[1]**2)
-                pygame.draw.line(SCREEN, GREEN, centerpoint, mouse, 3)
                 thetaV1 = -(math.atan2(items.vel[1], items.vel[0]))
                 thetaV2 = thetaV1 + 2*current_theta
                 items.vel[0] = (math.cos(thetaV2) * length) 
-                items.vel[1] = (math.sin(thetaV2) * length)
+                items.vel[1] = (math.sin(thetaV2) * length)   
+                #myLog.log(math.degrees(thetaV2)) #Outputs angle of reflected velocity if uncommented
                 
-                #pygame.draw.line(SCREEN, GREEN, centerpoint, (velXf, velYf), 3)
-                #myLog.log(math.degrees(thetaV2))
                 #END PADDLE PHYSICS##################################################################
+            
             else:
                 screencolor = WHITE
             pygame.draw.line(SCREEN, RED, items.coords, p1, 3)
             pygame.draw.line(SCREEN, RED, items.coords, p2, 3)
+            #myLog.log(str(math.degrees(theta1)) + ";" + str(math.degrees(theta2))) #Outputs ball's relative angles from edges of paddle when uncommented
             
-            #myLog.log(str(math.degrees(theta1)) + ";" + str(math.degrees(theta2)))
             ###END COLLIDER CODE    
-            
                 
             count += 1
             items.draw()
-    #####END BALL UPDATE CODE###########################################
+    #####END BALL UPDATE CODE -- everything else is outside the loop ###############################
             
-    count = 0    #Resets the for loop  
-    
+    count = 0    #Resets the loop  
+    #####Draws Goals###########################################
+            
     for num in range(0, 4):
         pygame.draw.rect(SCREEN, colorlist[3 - num],
                                  ((resX / 4) * num, 0, (resX / 4), GOALHEIGHT))
-        
+    #####End goal code###########################################    
+    
     myLog.log("SCORE: " + str(score) + "; " + 
               str(consecutive) + " IN A ROW; " + 
               str(strikes) + " STRIKES") 
