@@ -1,3 +1,4 @@
+##IMPORTANT! FRAME COUNTER STARTS AT ZERO!
 import sys
 import math
 class KeyframeMismatchError(Exception):
@@ -6,6 +7,9 @@ class KeyframeMismatchError(Exception):
 class KeyframeInvalidType(Exception):
     def __str(self):
         return repr("Provided values cannot be animated.")
+class ActionNotRendered(Exception):
+    def __str(self):
+        return repr("Action was not yet rendered.")
 class Action:
     END = -1
     BEGIN = 0
@@ -22,7 +26,7 @@ class Action:
         self.done = False #Has the animation reached the end of 
         self.rendered = False
         self.triggered = False
-        self.position = None #Keyframed value that corresponds to the frame's animation
+        self.position = start #Keyframed value that corresponds to the frame's animation
     def render(self): #Loads up frame buffer with values for each frame--"bakes" actions to buffer
         
         #These are error handlers that prevent animating invalid data types
@@ -54,11 +58,14 @@ class Action:
         self.position = self.framelist[0]
                     
         self.rendered = True
-    def trigger(self): #Call this to initiate the animation
-        self.triggered = True
+    def trigger(self): #Call this to initiate the animation. You can keep calling this forever; it's one-shot.
+        if self.rendered:
+            self.triggered = True
+        else:
+            raise ActionNotRendered()
         
-    def step(self): #Advances frame buffer by one 
-        if self.triggered and not self.done:
+    def step(self): #Advances frame buffer by one. Since animations require an event to be triggered, you can keep calling this function forever and nothing will happen unless you trigger it.
+        if self.triggered and not self.done and self.rendered:
             
             if self.frame < self.num_frames - 1:
                 self.frame += 1
@@ -66,8 +73,11 @@ class Action:
             else:
                 self.done = True
                 self.triggered = False
+        elif not self.rendered:
+            raise ActionNotRendered()
+            
     def backstep(self): #Steps one frame backward in frame buffer
-        if self.triggered and not self.done:
+        if self.triggered and not self.done and self.rendered:
             
             if self.frame > 0:
                 self.frame -= 1
@@ -75,22 +85,25 @@ class Action:
             else:
                 self.done = True
                 self.triggered = False
+        elif not self.rendered:
+            raise ActionNotRendered()
     
     def forget(self): #Drops baked frames and un-renders action--frees up resources if that's necessary.
         self.framelist = []
     
     def reverse(self): #Reverses frame buffer. Current frame buffer position also reversed to correspond with new frame position
-        self.framelist.reverse()
-        self.position = (len(self.framelist) - 1) - self.position
+        if self.rendered:
+            self.framelist.reverse()
+            self.frame = (len(self.framelist) - 1) - self.frame
+        else:
+            raise ActionNotRendered()
     
     def jumpto(self, frame): #Directly sets frame pointer to value. Setting it to END or BEGIN sets to end or beginning, respectively.
-        self.position = frame
-        
-##Test code to spit out a keyframe list        
-myAction = Action((25, 0, 25), (0, 25, 25), 50)
-myAction.render()
-myAction.trigger()
-while not myAction.done:
-    print(myAction.position)
-    myAction.step()
-print(len(myAction.framelist))
+        if self.rendered:
+            self.frame = frame
+        else:
+            raise ActionNotRendered()
+    def rewind(self): #Resets frame counter and un-triggers the animation
+        self.frame = 0
+        self.triggered = False
+        self.done = False
