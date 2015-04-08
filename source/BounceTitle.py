@@ -21,9 +21,9 @@ resY = 768
 #Import files
 okay = pygame.mixer.Sound("../assets/Complete.ogg")
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
-keyimage = pygame.image.load('../assets/BounceHelp.png')
+keyimage = pygame.image.load('../assets/BounceKeys.png')
 #Set up display
-SCREEN = pygame.display.set_mode((resX, resY))
+SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE)
 pygame.display.set_caption("Bounce")
 pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
 
@@ -66,6 +66,11 @@ goallist = [REDGOAL, YELLOWGOAL, GREENGOAL, BLUEGOAL]
 score = 0
 consecutive = 0 #How many balls in a row did the user hit?
 strikes = 0 #How many times did user miss?
+maxstrikes = 1 #Maximum number of strikes
+strikelist = [] #List of strike "icons" to display on scoreboard
+for num in range(maxstrikes):
+    strikelist.append(pykeyframe.Action(GREEN, RED, 10))
+    strikelist[num].render()
 #End Scoring#####
 
 #Ball and BallGroup Class to check for compatibility with final game
@@ -105,7 +110,9 @@ class Ball:
 
 #Launcher Code Start#######
 launcherY = 75 #Launchers always start 75 pixels from top of screen
+launcherX = 0
 launchtime = None
+launchdir = False
 #Launcher Code End########
 
 #Other bits of initialization code
@@ -162,7 +169,7 @@ for num in range(0,len(goallist)): #Adds animation to the onscreen buttons
     goalactionlist.append(pykeyframe.Action(-1, GOALHEIGHT, 7))
     goalactionlist[num].render()
     
-curtainfade = pykeyframe.Action(255, 0, 12) #Animates fading in/out the "curtain" -- black transparent/opaque surface that gives the "fade-in/out" effect
+curtainfade = pykeyframe.Action(255, 0, 45) #Animates fading in/out the "curtain" -- black transparent/opaque surface that gives the "fade-in/out" effect
 curtainfade.render()
 curtainfade.trigger()
 
@@ -203,6 +210,15 @@ while True:
         centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
                     int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
         pygame.draw.circle(SCREEN, RED, centerpoint, 10)
+        
+        if len(ballGroup) != 0:# and ballGroup[0].vel[1] > 0:
+            thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
+            for num in range(1, 9):
+                if num % 2 == 0:
+                    pygame.draw.line(SCREEN, paddlecolorfade.position, (centerpoint[0] + (math.cos(thetapredict) * (num * 20)),
+                                                                  centerpoint[1] + (math.sin(thetapredict) * (num * 20))), 
+                                     (centerpoint[0] + (math.cos(thetapredict) * ((num + 1) * 20)), 
+                                      centerpoint[1] + (math.sin(thetapredict) * ((num + 1) * 20))), 5) #Draws dashed "prediction line" showing ball's projected trajectory
         ##END PADDLE MOVEMENT CODE #################################################################
         
         ##Ball launcher code########################################
@@ -214,16 +230,15 @@ while True:
         if len(ballGroup) == 0 and launchtime == None: #Only tries to launch a ball if there aren't any on the field and one hasn't been queued. It'd be pretty hard to catch two balls otherwise!
             myLog.log("ABOUT TO LAUNCH!")
             ballcolor = random.randint(0, 3)
-            if bool(random.getrandbits(1)): #Gets a random True/False. True: launch from left side, False: launch from right
+            launchdir = random.getrandbits(1)
+            if launchdir: #Gets a random True/False. True: launch from left side, False: launch from right
                 launcherX = ballsize + 1 #The +1 is so that the ball doesn't somehow magically get stuck inside the wall and infinitely bounce 
             else:
                 launcherX = resX - (ballsize + 1)
 
             launchtime = gametime + random.randint(250, 2000) #Launches the ball some time in the future from current time. FUUUUTURE!!!
-        pygame.draw.circle(SCREEN, RED, (launcherX, launcherY), ballsize)
-        if gametime >= launchtime and launchtime != None:
-            launchtime = None #There already is a ball on the field, so no need to use launchtime to suppress launcher.
-            ballspeed = random.randint(7, 20)
+            
+            ballspeed = random.randint(5, score + 5)
             
             launcherdiffX = launcherX - centerpoint[0] #Differences in coordinates between paddle and ball launcher
             launcherdiffY = launcherY - centerpoint[1] 
@@ -232,7 +247,18 @@ while True:
             coeff = ballspeed / launcherdist #Multiplicative coefficient used to scale down velocity to match a set value
             velX = -launcherdiffX * coeff #These are negative to make ball travel backwards from launcher to center of paddle
             velY = -launcherdiffY * coeff
+    
             ballvel = (velX, velY)
+        arrowscale = (launchdir * 2) - 1
+        arrowsize = 20
+        pygame.gfxdraw.aapolygon(SCREEN, ((launcherX - arrowsize + (arrowscale * arrowsize), 
+                                           launcherY + arrowsize),
+                                          (launcherX + arrowsize + (arrowscale * arrowsize), 
+                                           launcherY + arrowsize),
+                                          (launcherX + (arrowscale * arrowsize), 
+                                           launcherY - int(arrowsize * 0.8))), colorlist[ballcolor])
+        if gametime >= launchtime and launchtime != None:
+            launchtime = None #There already is a ball on the field, so no need to use launchtime to suppress launcher.
             ballGroup.append(Ball(SCREEN, colorlist[ballcolor], 
                              (launcherX, launcherY), ballsize, ballvel, (0, 0), 
                              attrlist[ballcolor]))
@@ -245,6 +271,8 @@ while True:
                 ##CODE THING THAT DELETES BALLS WHEN THEY DISAPPEAR OFF BOTTOM OF SCREEN
                 if items.coords[1] >= resY + items.radius:
                     del[ballGroup[count]]
+                    strikes += 1
+                    
                 ##END CODE THING THAT DISAPPEAR OFF BOTTOM
                 
                 ##MAKES BALL BOUNCE ON WALLS
@@ -262,7 +290,6 @@ while True:
                     else: #Incorrect Goal
                         consecutive = 0
                         strikes += 1
-                        
                     del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
                     
                 if (items.coords[1] >= centerpoint[1] - polar_coords[0][0] and 
@@ -311,6 +338,14 @@ while True:
                                      (int(resX / 4) * num, 0, int(resX / 4) + 2, GOALHEIGHT))
         #####End goal code###########################################    
         
+        #####Scoreboard Code#####################
+        if strikes > 0 and strikes <= maxstrikes:
+            strikelist[-strikes].trigger()
+        if strikes >= maxstrikes:
+            state = "menustart"
+        for num in range(maxstrikes):
+            strikelist[num].step()
+            pygame.draw.circle(SCREEN, strikelist[num].position, (resX - ((num + 1) * 50), resY - 75), 15)
         #myLog.log("SCORE: " + str(score) + "; " + 
         #          str(consecutive) + " IN A ROW; " + 
         #          str(strikes) + " STRIKES") 
@@ -384,7 +419,7 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == KEYDOWN:
+        elif event.type == KEYDOWN:
             keys = pygame.key.get_pressed()
             if keys[K_LMETA] or keys[K_RMETA]:
                 if keys[K_q] or keys[K_w]:
@@ -446,7 +481,7 @@ while True:
                         paddlecolorfade.end = colorlist[paddlecolor]
                         paddlecolorfade.render()
                         paddlecolorfade.trigger()
-                    if keys[K_DOWN] and not keys[K_UP]:
+                    elif keys[K_DOWN] and not keys[K_UP]:
                         paddlecolorfade.forget()
                         paddlecolorfade.rewind()
                         paddlecolorfade.start = colorlist[paddlecolor]
@@ -468,7 +503,7 @@ while True:
                         paddlecolorfade.end = colorlist[paddlecolor]
                         paddlecolorfade.render()
                         paddlecolorfade.trigger()
-                    if keys[K_s] and not keys[K_w]:
+                    elif keys[K_s] and not keys[K_w]:
                         paddlecolorfade.forget()
                         paddlecolorfade.rewind()
                         paddlecolorfade.start = colorlist[paddlecolor]
@@ -478,13 +513,13 @@ while True:
                         paddlecolorfade.end = colorlist[paddlecolor]
                         paddlecolorfade.render()
                         paddlecolorfade.trigger()
-        if event.type == KEYUP:
+        elif event.type == KEYUP:
             keys = event.key
             if state == "play":
                 if keys == K_LEFT or keys == K_RIGHT or keys == K_a or keys == K_d:
                     d_theta = 0
     clock.tick(60)
-    pygame.display.update()
+    pygame.display.flip()
 
 
 
