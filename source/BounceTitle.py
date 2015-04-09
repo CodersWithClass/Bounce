@@ -1,6 +1,13 @@
 #    "Bounce" (c) 2015 CodersWithClass{}
 #    See bottom of code for license and terms of use
-
+'''
+TODO:
+-Tell player high score at end of game, and if record broken
+-Ask for confirmation before exiting game
+-Savefiles, stats, etc.
+-Instructions
+-Credits
+'''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
 import pygame
@@ -22,6 +29,7 @@ resY = 768
 okay = pygame.mixer.Sound("../assets/Complete.ogg")
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 keyimage = pygame.image.load('../assets/BounceKeys.png')
+pygame.mixer.music.load('../assets/BounceBGM.ogg')
 #Set up display
 SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE)
 pygame.display.set_caption("Bounce")
@@ -66,11 +74,13 @@ goallist = [REDGOAL, YELLOWGOAL, GREENGOAL, BLUEGOAL]
 score = 0
 consecutive = 0 #How many balls in a row did the user hit?
 strikes = 0 #How many times did user miss?
-maxstrikes = 1 #Maximum number of strikes
+maxstrikes = 5 #Maximum number of strikes
 strikelist = [] #List of strike "icons" to display on scoreboard
 for num in range(maxstrikes):
     strikelist.append(pykeyframe.Action(GREEN, RED, 10))
     strikelist[num].render()
+scorefont = pygame.font.Font(None, 80)
+scorelabel = scorefont.render("9001", 1, WHITE)
 #End Scoring#####
 
 #Ball and BallGroup Class to check for compatibility with final game
@@ -157,7 +167,7 @@ for coords in paddle: #Converts coordinates into polar coordinates, in radians
 
 ##MENU CODE BEGIN
 state = "keys" #State machine logic
-state = "play"
+#state = "gameover"
 debug = False #Debug mode prints out log data to screen
 finished = False #Is animation done moving?
 
@@ -179,10 +189,57 @@ menuselect = 0#What the player is currently selecting
 easteregg = None #Easter Egg Variable
 
 #MENU CODE END
+
+####ARROW MENU SETUP CODE################################################
+arrowchoicefont = pygame.font.Font(None, 50)
+titlefont = pygame.font.Font(None, 175)
+dispmidpointX = int(resX / 2)
+dispmidpointY = int(resY / 2)
+arrowchoicelist = ["quit", "retry", "continue", "yes", "no", "continue"] #Creates the choices that appear on the "arrow menu"
+arrowlabellist = [] #Creates label surfaces that actually display font
+arrowlabelrectlist = [] #Creates rectangle objects for each text that helps with alignment
+for items in arrowchoicelist:
+    arrowlabellist.append(arrowchoicefont.render(items, 1, WHITE))
+    arrowlabelrectlist.append(arrowlabellist[arrowchoicelist.index(items)].get_rect())
+pauselabel = titlefont.render("paused", 1, WHITE)
+pauserect = pauselabel.get_rect()
+pauserect.center = (dispmidpointX, dispmidpointY)
+
+quitlabel = titlefont.render("quit?", 1, WHITE)
+quitrect = quitlabel.get_rect()
+quitrect.center = (dispmidpointX, dispmidpointY)
+
+retrylabel = titlefont.render("retry?", 1, WHITE)
+retryrect = retrylabel.get_rect()
+retryrect.center = (dispmidpointX, dispmidpointY)
+
+surelabel = titlefont.render("sure?", 1, WHITE)
+surerect = surelabel.get_rect()
+surerect.center = (dispmidpointX, dispmidpointY)
+
+confirmscreen = pygame.surface.Surface((resX, resY))
+pausescreen = pygame.surface.Surface((resX, resY))
+gameoverscreen = pygame.surface.Surface((resX, resY))
+
+confcurtain = pykeyframe.Action(-resY, 0, 20)
+pausecurtain = pykeyframe.Action(-resY, 0, 20)
+gameovercurtain = pykeyframe.Action(-resY, 0, 20)
+confcurtain.render()
+confcurtain.trigger()
+pausecurtain.render()
+pausecurtain.trigger()
+gameovercurtain.render()
+gameovercurtain.trigger()
+
+gameoverfont = pygame.font.Font(None, 100)
+gameoverlabel = gameoverfont.render("game over.", 1, WHITE)
+gameoverrect = gameoverlabel.get_rect()
+gameoverrect.center = (dispmidpointX, 250)
+####END ARROW MENU SETUP CODE################################################   
 while True:
     SCREEN.fill(BLACK)  
-            
-    if state == "play":
+    myLog.log(state)
+    if state == "play" or state == "paused":
         gametime = pygame.time.get_ticks()
         paddlecolorfade.step()
         
@@ -205,11 +262,11 @@ while True:
                               paddle_center[1])
         pygame.draw.polygon(SCREEN, paddlecolorfade.position, pointlist, 0)
         pygame.gfxdraw.aapolygon(SCREEN, pointlist, paddlecolorfade.position)
-        pygame.draw.line(SCREEN, RED, pointlist[0], pointlist[1], 1) #Collision mesh for paddle
+        #pygame.draw.line(SCREEN, RED, pointlist[0], pointlist[1], 1) #Collision mesh for paddle
         
         centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
                     int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
-        pygame.draw.circle(SCREEN, RED, centerpoint, 10)
+        #pygame.draw.circle(SCREEN, RED, centerpoint, 10)
         
         if len(ballGroup) != 0:# and ballGroup[0].vel[1] > 0:
             thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
@@ -222,10 +279,10 @@ while True:
         ##END PADDLE MOVEMENT CODE #################################################################
         
         ##Ball launcher code########################################
-        if launchtime != None:
-            myLog.log(str(launchtime - gametime))#Gives a countdown until ball is to be launched
-        else:
-            myLog.log(str(len(ballGroup)) + " balls on screen")
+        #if launchtime != None:
+        #    myLog.log(str(launchtime - gametime))#Gives a countdown until ball is to be launched
+        #else:
+        #    myLog.log(str(len(ballGroup)) + " balls on screen")
         
         if len(ballGroup) == 0 and launchtime == None: #Only tries to launch a ball if there aren't any on the field and one hasn't been queued. It'd be pretty hard to catch two balls otherwise!
             myLog.log("ABOUT TO LAUNCH!")
@@ -257,6 +314,12 @@ while True:
                                            launcherY + arrowsize),
                                           (launcherX + (arrowscale * arrowsize), 
                                            launcherY - int(arrowsize * 0.8))), colorlist[ballcolor])
+        pygame.gfxdraw.filled_polygon(SCREEN, ((launcherX - arrowsize + (arrowscale * arrowsize) + 1, 
+                                           launcherY + arrowsize - 1),
+                                          (launcherX + arrowsize + (arrowscale * arrowsize), 
+                                           launcherY + arrowsize),
+                                          (launcherX + (arrowscale * arrowsize), 
+                                           launcherY - int(arrowsize * 0.8) + 1)), colorlist[ballcolor])
         if gametime >= launchtime and launchtime != None:
             launchtime = None #There already is a ball on the field, so no need to use launchtime to suppress launcher.
             ballGroup.append(Ball(SCREEN, colorlist[ballcolor], 
@@ -266,7 +329,10 @@ while True:
         
         ###### BALL UPDATE CODE ########################################
         while count < len(ballGroup):#Allows the list to become modifiable due to advanced for loops being immutable       
-                items = ballGroup[count]
+            items = ballGroup[count]
+            
+            if state != "paused":
+                pygame.mixer.music.unpause()
                 items.update()
                 ##CODE THING THAT DELETES BALLS WHEN THEY DISAPPEAR OFF BOTTOM OF SCREEN
                 if items.coords[1] >= resY + items.radius:
@@ -325,9 +391,10 @@ while True:
                 #myLog.log(str(math.degrees(theta1)) + ";" + str(math.degrees(theta2))) #Outputs ball's relative angles from edges of paddle when uncommented
                 
                 ###END COLLIDER CODE    
-                    
-                count += 1
-                items.draw()
+            else:
+                pygame.mixer.music.pause()        
+            count += 1
+            items.draw()
         #####END BALL UPDATE CODE -- everything else is outside the loop ###############################
                 
         count = 0    #Resets the loop  
@@ -342,15 +409,20 @@ while True:
         if strikes > 0 and strikes <= maxstrikes:
             strikelist[-strikes].trigger()
         if strikes >= maxstrikes:
-            state = "menustart"
+            state = "gameover"
         for num in range(maxstrikes):
             strikelist[num].step()
-            pygame.draw.circle(SCREEN, strikelist[num].position, (resX - ((num + 1) * 50), resY - 75), 15)
+            pygame.gfxdraw.filled_circle(SCREEN, resX - ((num + 1) * 50), resY - 75, 14, strikelist[num].position)
+            pygame.gfxdraw.aacircle(SCREEN, resX - ((num + 1) * 50), resY - 75, 14, strikelist[num].position)
         #myLog.log("SCORE: " + str(score) + "; " + 
         #          str(consecutive) + " IN A ROW; " + 
         #          str(strikes) + " STRIKES") 
-        #myLog.log(pygame.time.get_ticks() - starttime)
-            
+        #myLog.log(pygame.time.get_ticks() - starttime)  
+        scorelabel = scorefont.render("score: " + str(score), 1, WHITE)
+        scorerect = scorelabel.get_rect()
+        scorerect.bottomleft = (50, resY - 60)
+        SCREEN.blit(scorelabel, scorerect.topleft)
+    
     ##MAIN MENU CODE#################################################################################
     elif state == "keys": #Shows the beginning help image with key controls
         SCREEN.blit(keyimage, keyrect.topleft)
@@ -396,7 +468,7 @@ while True:
         elif state == "menuplay":
             goalactionlist[0].done = False
             goalactionlist[0].backstep()
-            state = "play"
+            state = "newgame"
         elif state == "menuexit":
             pygame.quit()
             sys.exit()
@@ -413,7 +485,177 @@ while True:
                              (int(resX / 4) * num, 0, int(resX / 4) , goalactionlist[num].position))
             SCREEN.blit(label, fontrect.topleft)
     ##END MENU CODE#################################################################################            
+    ##BEGIN PAUSE MENU CODE#################################################################################
+    elif state == "retrysure" or state == "quitsure" or state =="clearsure":
+        confirmscreen.fill(BLACK)
+        confcurtain.trigger()
+        confcurtain.done = False
+        confcurtain.step()
+        
+        
+        #Confirmation Menu
+        pygame.gfxdraw.aapolygon(confirmscreen, ((dispmidpointX, 10), #Upwards-pointing arrow
+                                          (dispmidpointX - 40, 80),
+                                          (dispmidpointX + 40, 80)), WHITE) 
+        pygame.gfxdraw.filled_polygon(confirmscreen, ((dispmidpointX, 11),
+                                               (dispmidpointX - 39, 79),
+                                               (dispmidpointX + 39, 79)), WHITE) 
+        
+        pygame.gfxdraw.aapolygon(confirmscreen, ((dispmidpointX, resY - 10), #Downwards-pointing arrow
+                                          (dispmidpointX - 40, resY - 80),
+                                          (dispmidpointX + 40, resY - 80)), WHITE) 
+        pygame.gfxdraw.filled_polygon(confirmscreen, ((dispmidpointX, resY - 11),
+                                               (dispmidpointX - 39, resY - 79),
+                                               (dispmidpointX + 39, resY - 79)), WHITE) 
+        
+        if state == "retrysure":
+            confirmscreen.blit(retrylabel, retryrect.topleft)   
+        elif state == "quitsure":
+            confirmscreen.blit(quitlabel, quitrect.topleft)   
+        elif state == "clearsure":
+            confirmscreen.blit(surelabel, surerect.topleft)        
+        
+        arrowlabelrectlist[4].centerx = dispmidpointX #no button
+        arrowlabelrectlist[4].bottom = resY - 100
+        confirmscreen.blit(arrowlabellist[4], arrowlabelrectlist[4].topleft)
+        
+        arrowlabelrectlist[3].centerx = dispmidpointX #yes button
+        arrowlabelrectlist[3].top = 100
+        confirmscreen.blit(arrowlabellist[3], arrowlabelrectlist[3].topleft)
+    if state != "retrysure" and state != "quitsure" and state !="clearsure":
+        confcurtain.trigger()
+        confcurtain.done = False
+        confcurtain.backstep()
+        
+        if state == "paused":
+            #Pause Menu
+            pausescreen.fill(BLACK)
+            pausecurtain.trigger()
+            pausecurtain.done = False
+            pausecurtain.step()
+            pygame.gfxdraw.aapolygon(pausescreen, ((dispmidpointX, 10), #Upwards-pointing arrow
+                                              (dispmidpointX - 40, 80),
+                                              (dispmidpointX + 40, 80)), WHITE) 
+            pygame.gfxdraw.filled_polygon(pausescreen, ((dispmidpointX, 11),
+                                                   (dispmidpointX - 39, 79),
+                                                   (dispmidpointX + 39, 79)), WHITE) 
             
+            pygame.gfxdraw.aapolygon(pausescreen, ((dispmidpointX, resY - 10), #Downwards-pointing arrow
+                                              (dispmidpointX - 40, resY - 80),
+                                              (dispmidpointX + 40, resY - 80)), WHITE) 
+            pygame.gfxdraw.filled_polygon(pausescreen, ((dispmidpointX, resY - 11),
+                                                   (dispmidpointX - 39, resY - 79),
+                                                   (dispmidpointX + 39, resY - 79)), WHITE) 
+            
+            pygame.gfxdraw.aapolygon(pausescreen, ((10, dispmidpointY), #Leftwards-pointing arrow
+                                              (80, dispmidpointY - 40),
+                                              (80, dispmidpointY + 40)), WHITE) 
+            pygame.gfxdraw.filled_polygon(pausescreen, ((11, dispmidpointY),
+                                                   (79, dispmidpointY - 39),
+                                                   (79, dispmidpointY + 39)), WHITE) 
+            
+            
+            pygame.gfxdraw.aapolygon(pausescreen, ((resX - 10, dispmidpointY), #Rightwards-pointing arrow
+                                              (resX - 80, dispmidpointY - 40),
+                                              (resX - 80, dispmidpointY + 40)), WHITE) 
+            pygame.gfxdraw.filled_polygon(pausescreen, ((resX - 11, dispmidpointY),
+                                                   (resX - 79, dispmidpointY - 39),
+                                                   (resX - 79, dispmidpointY + 39)), WHITE) 
+            
+            pausescreen.blit(pauselabel, pauserect.topleft)   
+            arrowlabelrectlist[0].centerx = dispmidpointX #quit button
+            arrowlabelrectlist[0].bottom = resY - 100
+            pausescreen.blit(arrowlabellist[0], arrowlabelrectlist[0].topleft)
+            
+            arrowlabelrectlist[2].centerx = dispmidpointX #continue button
+            arrowlabelrectlist[2].top = 100
+            pausescreen.blit(arrowlabellist[2], arrowlabelrectlist[2].topleft)
+            
+            arrowlabelrectlist[1].left = 100 #retry button
+            arrowlabelrectlist[1].centery = dispmidpointY
+            pausescreen.blit(arrowlabellist[1], arrowlabelrectlist[1].topleft)
+        elif state != "paused":
+            pausecurtain.trigger()
+            pausecurtain.done = False
+            pausecurtain.backstep()
+        if state == "gameover":
+            #Pause Menu
+            pygame.mixer.music.stop()
+            gameoverscreen.fill(BLACK)
+            gameovercurtain.trigger()
+            gameovercurtain.done = False
+            gameovercurtain.step()
+            
+            pygame.gfxdraw.aapolygon(gameoverscreen, ((resX - 10, dispmidpointY), #Rightwards-pointing arrow
+                                              (resX - 80, dispmidpointY - 40),
+                                              (resX - 80, dispmidpointY + 40)), WHITE) 
+            pygame.gfxdraw.filled_polygon(gameoverscreen, ((resX - 11, dispmidpointY),
+                                                   (resX - 79, dispmidpointY - 39),
+                                                   (resX - 79, dispmidpointY + 39)), WHITE) 
+            
+            gameoverscreen.blit(gameoverlabel, gameoverrect.topleft)   
+
+            arrowlabelrectlist[2].right = resX - 100 #continue button
+            arrowlabelrectlist[2].centery = dispmidpointY
+            gameoverscreen.blit(arrowlabellist[2], arrowlabelrectlist[2].topleft)
+            scorelabel = scorefont.render("score: " + str(score), 1, WHITE)
+            scorerect = scorelabel.get_rect()
+            scorerect.top = 400
+            scorerect.centerx = dispmidpointX
+            gameoverscreen.blit(scorelabel, scorerect.topleft)
+
+    if state == "paused":
+        SCREEN.blit(pausescreen, (0, pausecurtain.position))
+    if state == "retrysure" or state == "quitsure" or state =="clearsure":
+        SCREEN.blit(confirmscreen, (0, confcurtain.position))
+    if state =="gameover":
+        SCREEN.blit(gameoverscreen, (0, gameovercurtain.position))
+    ##BEGIN PAUSE MENU CODE#################################################################################
+    if state =="resetmenu":
+        goalactionlist = []
+        curtainsurf = pygame.Surface(cwcrect.size, depth = 32)#Color depth seems to be the main performance drag here. 32-bit works better sometimes, 24-bit others. Blame this if your game lags!
+        for num in range(0,len(goallist)): #Adds animation to the onscreen buttons
+            goalactionlist.append(pykeyframe.Action(-1, GOALHEIGHT, 7))
+            goalactionlist[num].render()
+        menuselect = 0
+        state = "menustart"
+    if state =="newgame":
+        
+        paddlecolorfade = pykeyframe.Action(colorlist[0], colorlist[0], 15)
+        paddlecolorfade.render()
+        
+        paddle_height = 13
+        paddle_width = 90
+        
+        paddle_center = (int(resX / 2), resY  - (paddle_width + 100))
+        
+        paddle = [(-paddle_width, -paddle_height), 
+                  (paddle_width, -paddle_height), 
+                  (paddle_width, paddle_height), 
+                  (-paddle_width, paddle_height)] #Relative position of points in paddle in relationship to center point
+        polar_coords = []
+        pointlist = [(0, 0), (0, 0), (0, 0), (0, 0)]
+        for coords in paddle: #Converts coordinates into polar coordinates, in radians
+            dist = math.sqrt(coords[0] ** 2 + coords[1] ** 1)
+            new_coords = (dist, math.atan2(coords[1], coords[0]))
+            polar_coords.append(new_coords)
+        
+        launcherY = 75 #Launchers always start 75 pixels from top of screen
+        launcherX = 0
+        launchtime = None
+        launchdir = False
+        
+        score = 0
+        consecutive = 0 #How many balls in a row did the user hit?
+        strikes = 0 #How many times did user miss?
+        strikelist = [] #List of strike "icons" to display on scoreboard
+        for num in range(maxstrikes):
+            strikelist.append(pykeyframe.Action(GREEN, RED, 10))
+            strikelist[num].render()
+        scorefont = pygame.font.Font(None, 80)
+        scorelabel = scorefont.render("9001", 1, WHITE)
+        pygame.mixer.music.play(-1)
+        state = "play"
 #EVENT HANDLER CODE########
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -425,39 +667,6 @@ while True:
                 if keys[K_q] or keys[K_w]:
                     pygame.quit()
                     sys.exit()
-            if state == "keys":
-                if keys[K_SPACE] or keys[K_RETURN]:
-                    state = "logo"
-            if state == "logo" or state == "logofadeout": #Easter egg!
-                if keys[K_s] and keys[K_a] and keys[K_m]:
-                    easteregg = "sam"
-                    okay.play()
-                    
-            if state == "menu": #Menu controls
-                if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
-                    if keys[K_LEFT] and not keys[K_RIGHT]:
-                        menuselect -= 1
-                        if menuselect <= -1:
-                            menuselect = len(menu_options) - 1
-                    if keys[K_RIGHT] and not keys[K_LEFT]:
-                        menuselect += 1
-                        if menuselect >= len(menu_options):
-                            menuselect = 0
-                elif keys[K_a] or keys[K_d]:
-                    if keys[K_a] and not keys[K_d]: 
-                        menuselect -= 1
-                        if menuselect <= -1:
-                            menuselect = len(menu_options) - 1
-                    if keys[K_d] and not keys[K_a]:
-                        menuselect += 1
-                        if menuselect >= len(menu_options):
-                            menuselect = 0
-                if (keys[K_SPACE] or keys[K_RETURN]):
-                    if (menuselect == 0 or menuselect == 3):
-                        state += menu_options[menuselect]
-                        windowfade = pykeyframe.Action(BLACK, colorlist[3 - menuselect], 20)
-                        
-                    
             if state == "play":
                 if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                     if keys[K_LEFT] and not keys[K_RIGHT]:
@@ -513,6 +722,94 @@ while True:
                         paddlecolorfade.end = colorlist[paddlecolor]
                         paddlecolorfade.render()
                         paddlecolorfade.trigger()
+                elif keys[K_ESCAPE]:
+                    state = "paused"
+            elif state == "keys":
+                if keys[K_SPACE] or keys[K_RETURN]:
+                    state = "logo"
+            elif state == "logo" or state == "logofadeout": #Easter egg!
+                if keys[K_s] and keys[K_a] and keys[K_m]:
+                    easteregg = "sam"
+                    okay.play()
+                    
+            elif state == "menu": #Menu controls
+                if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
+                    if keys[K_LEFT] and not keys[K_RIGHT]:
+                        menuselect -= 1
+                        if menuselect <= -1:
+                            menuselect = len(menu_options) - 1
+                    if keys[K_RIGHT] and not keys[K_LEFT]:
+                        menuselect += 1
+                        if menuselect >= len(menu_options):
+                            menuselect = 0
+                elif keys[K_a] or keys[K_d]:
+                    if keys[K_a] and not keys[K_d]: 
+                        menuselect -= 1
+                        if menuselect <= -1:
+                            menuselect = len(menu_options) - 1
+                    if keys[K_d] and not keys[K_a]:
+                        menuselect += 1
+                        if menuselect >= len(menu_options):
+                            menuselect = 0
+                if (keys[K_SPACE] or keys[K_RETURN]):
+                    if (menuselect == 0 or menuselect == 3):
+                        state += menu_options[menuselect]
+                        windowfade = pykeyframe.Action(BLACK, colorlist[3 - menuselect], 20)
+
+            elif state =="gameover":
+                if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
+                    if keys[K_RIGHT] and not keys[K_LEFT]:
+                        state = "resetmenu"
+                elif keys[K_a] or keys[K_d]:
+                    if keys[K_d] and not keys[K_a]:  
+                        state = "resetmenu"     
+            elif state == "paused":
+                if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
+                    if keys[K_LEFT] and not keys[K_RIGHT]:
+                        state = "retrysure"
+                    #if keys[K_RIGHT] and not keys[K_LEFT]:
+                        
+                elif keys[K_a] or keys[K_d]:
+                    if keys[K_a] and not keys[K_d]: 
+                        state = "retrysure"
+                    #if keys[K_d] and not keys[K_a]:
+
+                
+                if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
+                    if keys[K_UP] and not keys[K_DOWN]:
+                        state = "play"
+                    elif keys[K_DOWN] and not keys[K_UP]:
+                        state = "quitsure"
+                elif keys[K_s] or keys[K_w]:
+                    if keys[K_w] and not keys[K_s]: 
+                        state = "play"
+                    elif keys[K_s] and not keys[K_w]:
+                        state = "quitsure"
+                elif keys[K_ESCAPE]:
+                    state = "play"
+            else:
+                if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
+                    if keys[K_UP] and not keys[K_DOWN]:
+                        if state == "quitsure":
+                            state = "resetmenu"
+                        elif state == "retrysure":
+                            state = "newgame"
+                        elif state == "clearsure":
+                            pass
+                    elif keys[K_DOWN] and not keys[K_UP]:
+                        state = "paused"
+                elif keys[K_s] or keys[K_w]:
+                    if keys[K_w] and not keys[K_s]: 
+                        if state == "quitsure":
+                            state = "resetmenu"
+                        elif state == "retrysure":
+                            state = "newgame"
+                        elif state == "clearsure":
+                            pass
+                    elif keys[K_s] and not keys[K_w]:
+                        state = "paused"
+                elif keys[K_ESCAPE]:
+                    state = "paused"
         elif event.type == KEYUP:
             keys = event.key
             if state == "play":
