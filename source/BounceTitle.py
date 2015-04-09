@@ -22,17 +22,18 @@ import math
 pygame.init()
 clock = pygame.time.Clock()
 framerate = 60
-resX = 1366
-resY = 768
 
 #Import files
 okay = pygame.mixer.Sound("../assets/Complete.ogg")
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 keyimage = pygame.image.load('../assets/BounceKeys.png')
 pygame.mixer.music.load('../assets/BounceBGM.ogg')
+
 #Set up display
-SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE)
-pygame.display.set_caption("Bounce")
+displayinfo = pygame.display.Info()
+resX = displayinfo.current_w #Sets up Pygame Window and scales it to fit your screen
+resY = displayinfo.current_h
+SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.FULLSCREEN)#Plays in full 
 pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
 
 PI = math.pi
