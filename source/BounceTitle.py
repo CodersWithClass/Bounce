@@ -7,6 +7,13 @@ TODO:
 -Savefiles, stats, etc.
 -Instructions
 -Credits
+-Paddle skips color
+-Inconsistent speed change
+-Ball sometimes won't go through paddle
+-Try again button on game over screen
+-Randomize colors
+-Make the ball die after certain amount of time
+
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
@@ -28,12 +35,15 @@ okay = pygame.mixer.Sound("../assets/Complete.ogg")
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 keyimage = pygame.image.load('../assets/BounceKeys.png')
 pygame.mixer.music.load('../assets/BounceBGM.ogg')
-
+bounceicon = pygame.image.load('../assets/bounce.ico')
 #Set up display
+pygame.display.set_icon(bounceicon)
+pygame.display.set_caption("Bounce", "Bounce")
+print(pygame.display.get_caption())
 displayinfo = pygame.display.Info()
 resX = displayinfo.current_w #Sets up Pygame Window and scales it to fit your screen
 resY = displayinfo.current_h
-SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.FULLSCREEN)#Plays in full 
+SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE | pygame.FULLSCREEN)#Plays in full 
 pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
 
 PI = math.pi
@@ -285,7 +295,7 @@ while True:
         #else:
         #    myLog.log(str(len(ballGroup)) + " balls on screen")
         
-        if len(ballGroup) == 0 and launchtime == None: #Only tries to launch a ball if there aren't any on the field and one hasn't been queued. It'd be pretty hard to catch two balls otherwise!
+        if launchtime == None and len(ballGroup) == 0: #Only tries to launch a ball if there aren't any on the field and one hasn't been queued. It'd be pretty hard to catch two balls otherwise!
             myLog.log("ABOUT TO LAUNCH!")
             ballcolor = random.randint(0, 3)
             launchdir = random.getrandbits(1)
@@ -487,7 +497,7 @@ while True:
             SCREEN.blit(label, fontrect.topleft)
     ##END MENU CODE#################################################################################            
     ##BEGIN PAUSE MENU CODE#################################################################################
-    elif state == "retrysure" or state == "quitsure" or state =="clearsure":
+    elif "sure" in state:
         confirmscreen.fill(BLACK)
         confcurtain.trigger()
         confcurtain.done = False
@@ -523,7 +533,7 @@ while True:
         arrowlabelrectlist[3].centerx = dispmidpointX #yes button
         arrowlabelrectlist[3].top = 100
         confirmscreen.blit(arrowlabellist[3], arrowlabelrectlist[3].topleft)
-    if state != "retrysure" and state != "quitsure" and state !="clearsure":
+    if "sure" not in state:
         confcurtain.trigger()
         confcurtain.done = False
         confcurtain.backstep()
@@ -555,13 +565,13 @@ while True:
                                                    (79, dispmidpointY - 39),
                                                    (79, dispmidpointY + 39)), WHITE) 
             
-            
+            '''
             pygame.gfxdraw.aapolygon(pausescreen, ((resX - 10, dispmidpointY), #Rightwards-pointing arrow
                                               (resX - 80, dispmidpointY - 40),
                                               (resX - 80, dispmidpointY + 40)), WHITE) 
             pygame.gfxdraw.filled_polygon(pausescreen, ((resX - 11, dispmidpointY),
                                                    (resX - 79, dispmidpointY - 39),
-                                                   (resX - 79, dispmidpointY + 39)), WHITE) 
+                                                   (resX - 79, dispmidpointY + 39)), WHITE) '''
             
             pausescreen.blit(pauselabel, pauserect.topleft)   
             arrowlabelrectlist[0].centerx = dispmidpointX #quit button
@@ -607,7 +617,7 @@ while True:
 
     if state == "paused":
         SCREEN.blit(pausescreen, (0, pausecurtain.position))
-    if state == "retrysure" or state == "quitsure" or state =="clearsure":
+    if "sure" in state or state == "paused":
         SCREEN.blit(confirmscreen, (0, confcurtain.position))
     if state =="gameover":
         SCREEN.blit(gameoverscreen, (0, gameovercurtain.position))
@@ -657,6 +667,11 @@ while True:
         scorelabel = scorefont.render("9001", 1, WHITE)
         pygame.mixer.music.play(-1)
         state = "play"
+        ballGroup = []
+        current_theta = 0
+        target_theta = 0
+        d_theta = 0
+        paddlecolor = 0
 #EVENT HANDLER CODE########
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -788,7 +803,7 @@ while True:
                         state = "quitsure"
                 elif keys[K_ESCAPE]:
                     state = "play"
-            else:
+            elif "sure" in state:
                 if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
                     if keys[K_UP] and not keys[K_DOWN]:
                         if state == "quitsure":
