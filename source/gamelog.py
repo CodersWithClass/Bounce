@@ -18,7 +18,7 @@ class Logger:
         ycoord = 0
         xcoord = 0
         for items in self.buffer:
-            label = self.myFont.render(str(items), 1, self.color) 
+            label = self.myFont.render(str(items), 0, self.color) 
             self.surf.blit(label, (xcoord, ycoord))
             ycoord += self.charheight
             
