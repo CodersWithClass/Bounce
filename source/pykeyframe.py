@@ -28,7 +28,6 @@ class Action:
         self.triggered = False
         self.position = start #Keyframed value that corresponds to the frame's animation
     def render(self): #Loads up frame buffer with values for each frame--"bakes" actions to buffer
-        
         #These are error handlers that prevent animating invalid data types
         if type(self.start) != type(self.end): 
             raise KeyframeMismatchError()

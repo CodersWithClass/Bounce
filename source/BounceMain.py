@@ -12,6 +12,7 @@ TODO:
 -Randomize colors
 -Make the ball die after certain amount of time
 -Let players regain lives after a specific number of consecutive shots
+-Create a log file that outputs error codes to file after a crash.
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
@@ -216,7 +217,7 @@ credits = slideshow.Slideshow(SCREEN, 1000, 500, ['../assets/credits1.png', '../
 
 ##MENU CODE BEGIN
 state = "keys" #State machine logic
-state = "menustart"
+#state = "menustart"
 debug = False #Debug mode prints out log data to screen
 finished = False #Is animation done moving?
 
