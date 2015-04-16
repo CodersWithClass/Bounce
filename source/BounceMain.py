@@ -44,9 +44,18 @@ okay = pygame.mixer.Sound("../assets/Complete.ogg")
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 bouncetitle = pygame.image.load('../assets/BounceTitle.png')
 keyimage = pygame.image.load('../assets/BounceKeys.png')
-pygame.mixer.music.load('../assets/BounceBGM.ogg')
+
+try:
+    savefile = open('../savefile.txt', 'r')
+    highscore = savefile.readline()
+    highscore = int(highscore[:len(highscore) - 1])
+    
+except Exception:
+    savefile = open('../savefile.txt', 'w')
+    savefile.write('0\n')
 bounceicon = pygame.image.load('../assets/bounce.ico')
 bounceleft = pygame.mixer.Sound('../assets/BounceLeft.ogg') #Sound the ball makes when it hits the left edge of the display. It makes a different sound depending on 
+
 
 #Set up display
 pygame.display.set_icon(bounceicon)
@@ -102,9 +111,10 @@ goallist = [REDGOAL, YELLOWGOAL, GREENGOAL, BLUEGOAL]
 
 #Scoring#########
 score = 0
+highscore = 0 #High score
 consecutive = 0 #How many balls in a row did the user hit?
 strikes = 0 #How many times did user miss?
-maxstrikes = 1 #Maximum number of strikes
+maxstrikes = 5 #Maximum number of strikes
 strikelist = [] #List of strike "icons" to display on scoreboard
 for num in range(maxstrikes):
     strikelist.append(pykeyframe.Action(GREEN, RED, 10))
@@ -209,10 +219,10 @@ for coords in paddle: #Converts coordinates into polar coordinates, in radians
 bouncetitle = bouncetitle.convert()
 
 #Credits
-creditspush = pykeyframe.Action(resY, resY - 500, 20)
+creditspush = pykeyframe.Action(resY, resY - 550, 20)
 creditspush.render()
 creditspush.trigger()
-credits = slideshow.Slideshow(SCREEN, 1000, 500, ['../assets/credits1.png', '../assets/credits2.png'], wrap=False)
+credits = slideshow.Slideshow(SCREEN, 1000, 550, ['../assets/credits1.png', '../assets/credits2.png'], wrap=False)
 
 
 ##MENU CODE BEGIN
@@ -506,6 +516,12 @@ while True:
             
         elif "menu" in state: #Any state that contains the word "Menu"
             if state == "menustart":
+                savefile = open('../savefile.txt', 'r')
+                highscore = savefile.readline()
+                highscore = int(highscore[:len(highscore) - 1])
+                
+                pygame.mixer.music.load('../assets/BounceMenu.ogg')
+                pygame.mixer.music.play()
                 goalactionlist[0].trigger()
                 goalactionlist[0].step()
                 pygame.draw.rect(SCREEN, colorlist[-1], (0, 0, int(resX / 4), goalactionlist[0].position))
@@ -694,6 +710,11 @@ while True:
                 scorerect.centerx = dispmidpointX
                 gameoverscreen.blit(scorelabel, scorerect.topleft)
                 
+                if score > highscore:
+                    savefile = open('../savefile.txt', 'w')
+                    savefile.write(str(score) + '\n')
+                    savefile.close()
+                    
                 
     
         ##BEGIN PAUSE MENU CODE#################################################################################
@@ -706,7 +727,8 @@ while True:
             menuselect = 0
             state = "menustart"
         if state =="newgame":
-            
+            pygame.mixer.music.load('../assets/BounceBGM.ogg')
+            pygame.mixer.music.play()
             paddlecolorfade = pykeyframe.Action(colorlist[0], colorlist[0], 15)
             paddlecolorfade.render()
             
@@ -861,6 +883,9 @@ while True:
                                 menuselect = 0
                     if (keys[K_SPACE] or keys[K_RETURN]):
                         state += menu_options[menuselect]
+                elif state == "menuscores":
+                    if keys[K_UP] or keys[K_w] or keys[K_ESCAPE] or keys[K_DOWN] or keys[K_s]:
+                        state = "menu"
                 elif state == "menuabout":
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_RIGHT] and not keys[K_LEFT]:
