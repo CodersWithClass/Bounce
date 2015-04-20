@@ -34,4 +34,5 @@ class Slideshow:
                 self.slide = len(self.surflist) - 1
             else:
                 self.slide += 1
+
             

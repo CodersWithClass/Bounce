@@ -2,13 +2,9 @@
 #    See bottom of code for license and terms of use
 '''
 TODO:
--Tell player high score at end of game, and if record broken
 -Savefiles, stats, etc.
--Instructions
 -Paddle skips color
 -Inconsistent speed change
--Ball sometimes won't go through paddle
--Try again button on game over screen
 -Randomize colors
 -Make the ball die after certain amount of time
 -Let players regain lives after a specific number of consecutive shots
@@ -41,9 +37,16 @@ oops = [] #List of exceptions thrown during execution. Helps in creating a watch
 
 #Import files
 okay = pygame.mixer.Sound("../assets/Complete.ogg")
+
+#Different sound effects for hitting different walls
+bounceL = pygame.mixer.Sound('../assets/BounceLeft.ogg')
+bounceR = pygame.mixer.Sound('../assets/BounceRight.ogg')
+
+fail = pygame.mixer.Sound('../assets/Fail.ogg')
+correct = pygame.mixer.Sound('../assets/Pass.ogg')
+
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 bouncetitle = pygame.image.load('../assets/BounceTitle.png')
-keyimage = pygame.image.load('../assets/BounceKeys.png')
 
 try:
     savefile = open('../savefile.txt', 'r')
@@ -88,9 +91,12 @@ BLACK = (0, 0, 0)
 BLUE = (0, 177, 255)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 74)
+YELLOW = (255, 195, 10) #even prettier yellow
 GREEN = (0, 255, 44)
 
 colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will select a random color to make the next ball.
+colorlistU = [BLUE, RED, YELLOW, GREEN] #Same color list, shifted back by 1
+colorlistD = [YELLOW, GREEN, BLUE, RED] #Shifted forwards by 1
 attrlist = ["RED", "YELLOW", "GREEN", "BLUE"]
 myLog = gamelog.Logger(SCREEN)
 myLog.maxlines = 10
@@ -190,13 +196,19 @@ ballsize = 10
 target_theta = 0 #The position the paddle should be in (radians)
 current_theta = 0#The current position of the paddle
 d_theta = 0 #Change of angle
-max_d_theta = PI * 4 / 180 #Paddle Rotation Speed
+normal_d_theta = PI * 3.5 / 180 #Normal paddle speed
+focus_d_theta = PI * 1.5 / 180 #Focus mode paddle speed
+max_d_theta = normal_d_theta #Paddle Rotation Speed
 max_theta = PI/4 + .25
 min_theta = -PI/4 - .25
 damp = .3 #Dampening factor of the feedback loop--controls how "heavy" the paddle feels by affecting response time
 
 paddlecolorfade = pykeyframe.Action(colorlist[0], colorlist[0], 15)
 paddlecolorfade.render()
+arrowhelperU = pykeyframe.Action(colorlistU[0], colorlistU[0], 15) #Left "helper" arrow color--shows which color is next
+arrowhelperU.render()
+arrowhelperD = pykeyframe.Action(colorlistD[0], colorlistD[0], 15) #RIght "helper" arrow color--shows which color is next
+arrowhelperD.render()
 
 paddle_height = 13
 paddle_width = 90
@@ -210,9 +222,25 @@ paddle = [(-paddle_width, -paddle_height),
 polar_coords = []
 pointlist = [(0, 0), (0, 0), (0, 0), (0, 0)]
 for coords in paddle: #Converts coordinates into polar coordinates, in radians
-    dist = math.sqrt(coords[0] ** 2 + coords[1] ** 1)
+    dist = math.sqrt(coords[0] ** 2 + coords[1] ** 2)
     new_coords = (dist, math.atan2(coords[1], coords[0]))
     polar_coords.append(new_coords)
+    
+arrowhelperUCoords = [(-15, -20), (15, -20), (0, -35)]
+arrowhelperUList = [(0, 0), (0, 0), (0, 0)]
+polar_coords_arrowU = []
+for coords in arrowhelperUCoords: #Converts coordinates into polar coordinates, in radians
+    dist = math.sqrt(coords[0] ** 2 + coords[1] ** 2)
+    new_coords = (dist, math.atan2(coords[1], coords[0]))
+    polar_coords_arrowU.append(new_coords)
+    
+arrowhelperDCoords = [(-15, 20), (15, 20), (0, 35)]
+arrowhelperDList = [(0, 0), (0, 0), (0, 0)]
+polar_coords_arrowD = []
+for coords in arrowhelperDCoords: #Converts coordinates into polar coordinates, in radians
+    dist = math.sqrt(coords[0] ** 2 + coords[1] ** 2)
+    new_coords = (dist, math.atan2(coords[1], coords[0]))
+    polar_coords_arrowD.append(new_coords)
 ##End of paddle configuration#################################################################
 
 #Image optimization by converting image surfaces to same format as display
@@ -224,15 +252,28 @@ creditspush.render()
 creditspush.trigger()
 credits = slideshow.Slideshow(SCREEN, 1000, 550, ['../assets/credits1.png', '../assets/credits2.png'], wrap=False)
 
+#Scoring
+scorespush = pykeyframe.Action(resY, resY - 550, 20)
+scorespush.render()
+scorespush.trigger()
+scores = pygame.surface.Surface((1000, 550))
+
+#Help slideshow
+keyimage = slideshow.Slideshow(SCREEN, 798, 600, ['../assets/help1.png', 
+                                                  '../assets/help2.png',
+                                                  '../assets/help3.png',
+                                                  '../assets/help4.png',
+                                                  '../assets/help5.png'], wrap=False)
+keyrect = pygame.rect.Rect(0, 0, 798, 600)
+keyrect.center = (dispmidpointX, dispmidpointY)
 
 ##MENU CODE BEGIN
-state = "keys" #State machine logic
+state = "logo" #State machine logic
 #state = "menustart"
 debug = False #Debug mode prints out log data to screen
 finished = False #Is animation done moving?
 
 cwcrect = cwcsplash.get_rect(center = (dispmidpointX, dispmidpointY)) #bounding box for centering CWC logo
-keyrect = keyimage.get_rect(center = (dispmidpointX, dispmidpointY))
 
 bouncerect = bouncetitle.get_rect(center = (dispmidpointX, dispmidpointY))
 bouncecurtain = pygame.Surface(bouncerect.size, depth = 32)
@@ -302,6 +343,7 @@ gameoverrect = gameoverlabel.get_rect()
 gameoverrect.center = (dispmidpointX, 250)
 ####END ARROW MENU SETUP CODE################################################   
 while True:
+
     try:
         SCREEN.fill(BLACK)  
         #myLog.log(clock.get_fps())
@@ -309,7 +351,8 @@ while True:
         if state == "play" or state == "paused":
             gametime = pygame.time.get_ticks()
             paddlecolorfade.step()
-            
+            arrowhelperU.step()
+            arrowhelperD.step()
             
             ###START PADDLE MOVEMENT CODE #################################################################
             if target_theta < min_theta:
@@ -327,15 +370,32 @@ while True:
                                   paddle_center[0],
                                   items[0] * math.sin(items[1] + current_theta) + 
                                   paddle_center[1])
-            pygame.draw.polygon(SCREEN, paddlecolorfade.position, pointlist, 0)
+                
+            for num in range(0, len(arrowhelperUCoords)):
+                items = polar_coords_arrowU[num]
+                arrowhelperUList[num] = (items[0] * math.cos(items[1] + current_theta) + 
+                                         paddle_center[0],
+                                         items[0] * math.sin(items[1] + current_theta) + 
+                                         paddle_center[1])
+                items = polar_coords_arrowD[num]
+                arrowhelperDList[num] = (items[0] * math.cos(items[1] + current_theta) + 
+                                         paddle_center[0],
+                                         items[0] * math.sin(items[1] + current_theta) + 
+                                         paddle_center[1])    
+            pygame.gfxdraw.filled_polygon(SCREEN, pointlist, paddlecolorfade.position)
             pygame.gfxdraw.aapolygon(SCREEN, pointlist, paddlecolorfade.position)
+            
+            pygame.gfxdraw.filled_polygon(SCREEN, (arrowhelperUList), arrowhelperU.position)
+            pygame.gfxdraw.aa_polygon(SCREEN, (arrowhelperUList), arrowhelperU.position)
+            pygame.gfxdraw.filled_polygon(SCREEN, (arrowhelperDList), arrowhelperD.position)
+            pygame.gfxdraw.aa_polygon(SCREEN, (arrowhelperDList), arrowhelperD.position)
             #pygame.draw.line(SCREEN, RED, pointlist[0], pointlist[1], 1) #Collision mesh for paddle
             
             centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
                         int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
             #pygame.draw.circle(SCREEN, RED, centerpoint, 10)
             
-            if len(ballGroup) != 0:# and ballGroup[0].vel[1] > 0:
+            if len(ballGroup) != 0  or True:# and ballGroup[0].vel[1] > 0:
                 thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
                 for num in range(1, 9):
                     if num % 2 == 0:
@@ -362,8 +422,7 @@ while True:
     
                 launchtime = gametime + random.randint(250, 2000) #Launches the ball some time in the future from current time. FUUUUTURE!!!
                 
-                ballspeed = random.randint(5, score + 5)
-                
+                ballspeed = random.randint(5, int(score / 3) + 5)
                 launcherdiffX = launcherX - centerpoint[0] #Differences in coordinates between paddle and ball launcher
                 launcherdiffY = launcherY - centerpoint[1] 
                 launcherdist = math.sqrt(launcherdiffX ** 2 + launcherdiffY ** 2)
@@ -392,6 +451,10 @@ while True:
                 ballGroup.append(Ball(SCREEN, colorlist[ballcolor], 
                                  (launcherX, launcherY), ballsize, ballvel, (0, 0), 
                                  attrlist[ballcolor]))
+                if launchdir:
+                    bounceL.play()
+                else:
+                    bounceR.play()
             #END BALL LAUNCHER CODE ########################################
             
             ###### BALL UPDATE CODE ########################################
@@ -405,13 +468,18 @@ while True:
                     if items.coords[1] >= resY + items.radius:
                         del[ballGroup[count]]
                         strikes += 1
-                        
+                        fail.play()
                     ##END CODE THING THAT DISAPPEAR OFF BOTTOM
                     
                     ##MAKES BALL BOUNCE ON WALLS
                     if (items.coords[0] >= resX - items.radius or 
                             items.coords[0] <= items.radius):
+                        if items.coords[0] >= resX - items.radius:
+                            bounceR.play()
+                        else:
+                            bounceL.play()
                         items.bounceX()
+                        
                     ##END WALL BOUNCE CODE
                     
                     
@@ -420,9 +488,11 @@ while True:
                         if int(items.coords[0]) in goallist[attrlist.index(items.property)]: #Correct Goal
                             consecutive += 1
                             score += 1
+                            correct.play()
                         else: #Incorrect Goal
                             consecutive = 0
                             strikes += 1
+                            fail.play()
                         del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
                         
                     if (items.coords[1] >= centerpoint[1] - polar_coords[0][0] and 
@@ -448,13 +518,14 @@ while True:
                             thetaV2 = thetaV1 + 2*current_theta
                             items.vel[0] = (math.cos(thetaV2) * length) 
                             items.vel[1] = (math.sin(thetaV2) * length)   
-                            while dist < 10 and dist > -30: #This keeps ball from getting "stuck" in paddle by repeatedly trying to move the ball outside the paddle until ball is a set distance away, but also prevents game from hanging if ball bounces "the other way"
+                            while dist < 10 and dist > -50: #This keeps ball from getting "stuck" in paddle by repeatedly trying to move the ball outside the paddle until ball is a set distance away, but also prevents game from hanging if ball bounces "the other way"
                                 items.coords[0] += items.vel[0]
                                 items.coords[1] += items.vel[1]
                                 dist = d1 * math.sin(theta1)
                         
                                 theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
                                 d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
+                            correct.play()
                             #myLog.log(math.degrees(thetaV2)) #Outputs angle of reflected velocity if uncommented
                             
                             #END PADDLE PHYSICS##################################################################
@@ -498,7 +569,7 @@ while True:
         
         ##MAIN MENU CODE#################################################################################
         elif state == "keys": #Shows the beginning help image with key controls
-            SCREEN.blit(keyimage, keyrect.topleft)
+            keyimage.display(keyrect.topleft)
         elif state == "logo" or state == "logofadeout": #All these are elif statements so they don't get evaluated if they don't need to. This saves lots of time when running the state machine.
             curtainfade.step()
             curtainsurf.set_alpha(curtainfade.position)
@@ -515,13 +586,13 @@ while True:
             state = "menustart"        
             
         elif "menu" in state: #Any state that contains the word "Menu"
-            if state == "menustart":
+            if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
                 savefile = open('../savefile.txt', 'r')
                 highscore = savefile.readline()
                 highscore = int(highscore[:len(highscore) - 1])
                 
                 pygame.mixer.music.load('../assets/BounceMenu.ogg')
-                pygame.mixer.music.play()
+                pygame.mixer.music.play(-1)
                 goalactionlist[0].trigger()
                 goalactionlist[0].step()
                 pygame.draw.rect(SCREEN, colorlist[-1], (0, 0, int(resX / 4), goalactionlist[0].position))
@@ -545,13 +616,14 @@ while True:
                         goalactionlist[num].backstep()
                 creditspush.done = False
                 creditspush.backstep()
+                scorespush.done = False
+                scorespush.backstep()
             elif state == "menuplay":
                 goalactionlist[0].done = False
                 goalactionlist[0].backstep()
-                state = "newgame"
+                state = "keys"
             elif state =="menuexit":
                 state = "exitsure"
-                myLog.log(blag)
                 confcurtain.trigger()
             
             
@@ -575,6 +647,17 @@ while True:
                 myLog.log("GIANT CIRCLE!")
                 creditspush.step()
             credits.display((dispmidpointX - 500, creditspush.position))
+            
+            if state == "menuscores":
+                scorespush.trigger()
+                scores.fill(GREEN)
+                highscorelabel = scorefont.render("high score: " + str(highscore), 1, BLACK)
+                highscorerect = highscorelabel.get_rect()
+                highscorerect.center= (500, 225)
+                scores.blit(highscorelabel, highscorerect.topleft)
+                myLog.log("GOOOOOOOOOOOOOOOOL!!!")
+                scorespush.step()
+            SCREEN.blit(scores, (dispmidpointX - 500, scorespush.position))
         ##END MENU CODE#################################################################################            
         ##BEGIN PAUSE MENU CODE#################################################################################
         elif "sure" in state:
@@ -674,7 +757,7 @@ while True:
                 pausecurtain.backstep()
             if state == "gameover":
                 #Pause Menu
-                pygame.mixer.music.stop()
+                pygame.mixer.music.set_volume(.5)
                 gameoverscreen.fill(BLACK)
                 gameovercurtain.trigger()
                 gameovercurtain.done = False
@@ -714,8 +797,17 @@ while True:
                     savefile = open('../savefile.txt', 'w')
                     savefile.write(str(score) + '\n')
                     savefile.close()
-                    
-                
+                    scorelabel = scorefont.render("new record!", 1, WHITE)
+                    scorerect = scorelabel.get_rect()
+                    scorerect.top = 500
+                    scorerect.centerx = dispmidpointX
+                    gameoverscreen.blit(scorelabel, scorerect.topleft)
+                else:
+                    scorelabel = scorefont.render("high score: " + str(highscore), 1, WHITE)
+                    scorerect = scorelabel.get_rect()
+                    scorerect.top = 500
+                    scorerect.centerx = dispmidpointX
+                    gameoverscreen.blit(scorelabel, scorerect.topleft)
     
         ##BEGIN PAUSE MENU CODE#################################################################################
         if state =="resetmenu":
@@ -728,9 +820,15 @@ while True:
             state = "menustart"
         if state =="newgame":
             pygame.mixer.music.load('../assets/BounceBGM.ogg')
+            pygame.mixer.music.set_volume(1)
             pygame.mixer.music.play()
             paddlecolorfade = pykeyframe.Action(colorlist[0], colorlist[0], 15)
+            
             paddlecolorfade.render()
+            arrowhelperU = pykeyframe.Action(colorlistU[0], colorlistU[0], 15) #Left "helper" arrow color--shows which color is next
+            arrowhelperU.render()
+            arrowhelperD = pykeyframe.Action(colorlistD[0], colorlistD[0], 15) #RIght "helper" arrow color--shows which color is next
+            arrowhelperD.render()
             
             paddle_height = 13
             paddle_width = 90
@@ -760,7 +858,6 @@ while True:
             for num in range(maxstrikes):
                 strikelist.append(pykeyframe.Action(GREEN, RED, 10))
                 strikelist[num].render()
-            scorefont = pygame.font.Font(None, 80)
             scorelabel = scorefont.render("9001", 1, WHITE)
             pygame.mixer.music.play(-1)
             state = "play"
@@ -798,6 +895,10 @@ while True:
                             pygame.quit()
                             sys.exit()
                 if state == "play":
+                    if keys[K_RSHIFT] or keys[K_LSHIFT]: #Pressing SHIFT gives focused control
+                        max_d_theta = focus_d_theta #Paddle Rotation Speed
+                    else:
+                        max_d_theta = normal_d_theta #Paddle Rotation Speed
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_LEFT] and not keys[K_RIGHT]:
                             d_theta = max_d_theta
@@ -808,55 +909,115 @@ while True:
                             d_theta = max_d_theta
                         if keys[K_d] and not keys[K_a]:
                             d_theta = -max_d_theta
-                    
+                    if keys[K_1] or keys[K_2] or keys[K_3] or keys[K_4]:
+                        paddlecolorfade.forget()
+                        paddlecolorfade.rewind()
+                        arrowhelperU.forget()
+                        arrowhelperU.rewind()
+                        arrowhelperD.forget()
+                        arrowhelperD.rewind()
+                        paddlecolorfade.start = colorlist[paddlecolor]
+                        arrowhelperU.start = colorlistU[paddlecolor]
+                        arrowhelperD.start = colorlistD[paddlecolor]
+                        
+                        if keys[K_1]:
+                            paddlecolor = 3
+                        elif keys[K_2]:
+                            paddlecolor = 2
+                        elif keys[K_3]:
+                            paddlecolor = 1
+                        elif keys[K_4]:
+                            paddlecolor = 0
+                        
+                        paddlecolorfade.end = colorlist[paddlecolor]
+                        arrowhelperU.end = colorlistU[paddlecolor]
+                        arrowhelperD.end = colorlistD[paddlecolor]
+                        
+                        paddlecolorfade.render()
+                        paddlecolorfade.trigger()
+                        arrowhelperU.render()
+                        arrowhelperU.trigger()
+                        arrowhelperD.render()
+                        arrowhelperD.trigger()
+                        
                     if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
+                        paddlecolorfade.forget()
+                        paddlecolorfade.rewind()
+                        arrowhelperU.forget()
+                        arrowhelperU.rewind()
+                        arrowhelperD.forget()
+                        arrowhelperD.rewind()
+                        paddlecolorfade.start = colorlist[paddlecolor]
+                        arrowhelperU.start = colorlistU[paddlecolor]
+                        arrowhelperD.start = colorlistD[paddlecolor]
+                        
                         if keys[K_UP] and not keys[K_DOWN]:
-                            paddlecolorfade.forget()
-                            paddlecolorfade.rewind()
-                            paddlecolorfade.start = colorlist[paddlecolor]
-                            paddlecolor -= 1
-                            if paddlecolor < 0:
-                                paddlecolor = 3
-                            paddlecolorfade.end = colorlist[paddlecolor]
-                            paddlecolorfade.render()
-                            paddlecolorfade.trigger()
-                        elif keys[K_DOWN] and not keys[K_UP]:
-                            paddlecolorfade.forget()
-                            paddlecolorfade.rewind()
-                            paddlecolorfade.start = colorlist[paddlecolor]
-                            paddlecolor += 1
-                            if paddlecolor > 3:
-                                paddlecolor = 0
-                            paddlecolorfade.end = colorlist[paddlecolor]
-                            paddlecolorfade.render()
-                            paddlecolorfade.trigger()
                             
-                    elif keys[K_s] or keys[K_w]:
-                        if keys[K_w] and not keys[K_s]: 
-                            paddlecolorfade.forget()
-                            paddlecolorfade.rewind()
-                            paddlecolorfade.start = colorlist[paddlecolor]
                             paddlecolor -= 1
                             if paddlecolor < 0:
                                 paddlecolor = 3
-                            paddlecolorfade.end = colorlist[paddlecolor]
-                            paddlecolorfade.render()
-                            paddlecolorfade.trigger()
-                        elif keys[K_s] and not keys[K_w]:
-                            paddlecolorfade.forget()
-                            paddlecolorfade.rewind()
-                            paddlecolorfade.start = colorlist[paddlecolor]
+                            
+                        elif keys[K_DOWN] and not keys[K_UP]:
                             paddlecolor += 1
                             if paddlecolor > 3:
                                 paddlecolor = 0
-                            paddlecolorfade.end = colorlist[paddlecolor]
-                            paddlecolorfade.render()
-                            paddlecolorfade.trigger()
+
+                        paddlecolorfade.end = colorlist[paddlecolor]
+                        arrowhelperU.end = colorlistU[paddlecolor]
+                        arrowhelperD.end = colorlistD[paddlecolor]
+                        
+                        paddlecolorfade.render()
+                        paddlecolorfade.trigger()
+                        arrowhelperU.render()
+                        arrowhelperU.trigger()
+                        arrowhelperD.render()
+                        arrowhelperD.trigger()
+
+                    elif keys[K_s] or keys[K_w]:
+                        
+                        paddlecolorfade.forget()
+                        paddlecolorfade.rewind()
+                        arrowhelperU.forget()
+                        arrowhelperU.rewind()
+                        arrowhelperD.forget()
+                        arrowhelperD.rewind()
+                        paddlecolorfade.start = colorlist[paddlecolor]
+                        arrowhelperU.start = colorlistU[paddlecolor]
+                        arrowhelperD.start = colorlistD[paddlecolor]
+                        
+                        if keys[K_w] and not keys[K_s]: 
+                            paddlecolor -= 1
+                            if paddlecolor < 0:
+                                paddlecolor = 3
+                        elif keys[K_s] and not keys[K_w]:
+                            paddlecolor += 1
+                            if paddlecolor > 3:
+                                paddlecolor = 0
+                        paddlecolorfade.end = colorlist[paddlecolor]
+                        arrowhelperU.end = colorlistU[paddlecolor]
+                        arrowhelperD.end = colorlistD[paddlecolor]
+                        paddlecolorfade.render()
+                        paddlecolorfade.trigger()
+                        arrowhelperU.render()
+                        arrowhelperU.trigger()
+                        arrowhelperD.render()
+                        arrowhelperD.trigger()
+
                     elif keys[K_ESCAPE]:
                         state = "paused"
                 elif state == "keys":
                     if keys[K_SPACE] or keys[K_RETURN]:
-                        state = "logo"
+                        state = "newgame"
+                    if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
+                        if keys[K_RIGHT] and not keys[K_LEFT]:
+                            keyimage.step()
+                        elif keys[K_LEFT] or keys[K_RIGHT]:
+                            keyimage.backstep()
+                    elif keys[K_a] or keys[K_d]:
+                        if keys[K_d] and not keys[K_a]:  
+                            keyimage.step()   
+                        if keys[K_a] and not keys[K_d]: 
+                            keyimage.backstep() 
                 elif state == "logo" or state == "logofadeout": #Easter egg!
                     if keys[K_s] and keys[K_a] and keys[K_m]:
                         easteregg = "sam"
@@ -899,6 +1060,10 @@ while True:
                             credits.backstep() 
                     elif keys[K_UP] or keys[K_w] or keys[K_ESCAPE] or keys[K_DOWN] or keys[K_s]:
                         state = "menu"
+                        
+                elif state == "scores":
+                    if keys[K_UP] or keys[K_w] or keys[K_ESCAPE] or keys[K_DOWN] or keys[K_s]:
+                        state = "menu"     
                         
                 elif state =="gameover":
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
@@ -947,9 +1112,10 @@ while True:
                             elif state =="exitsure":
                                 pygame.quit()
                                 sys.exit()
+                                
                         elif keys[K_DOWN] and not keys[K_UP]:
                             if state == "exitsure":
-                                state = "menustart"
+                                state = "menu"
                             else:
                                 state = "paused"
                     elif keys[K_s] or keys[K_w]:
@@ -965,13 +1131,12 @@ while True:
                                 sys.exit()
                         elif keys[K_s] and not keys[K_w]:
                             if state == "exitsure":
-                                state = "menustart"
+                                state = "menu"
                             else:
                                 state = "paused"
                     elif keys[K_ESCAPE]:
                         if state == "exitsure":
-                            state = "menustart"
-                            a = 1/0
+                            state = "menu"
                         else:
                             state = "paused"
             elif event.type == KEYUP:
