@@ -347,7 +347,7 @@ while True:
     try:
         SCREEN.fill(BLACK)  
         #myLog.log(clock.get_fps())
-        myLog.log(state)
+        #myLog.log(state)
         if state == "play" or state == "paused":
             gametime = pygame.time.get_ticks()
             paddlecolorfade.step()
@@ -412,7 +412,7 @@ while True:
             #    myLog.log(str(len(ballGroup)) + " balls on screen")
             
             if launchtime == None and len(ballGroup) == 0: #Only tries to launch a ball if there aren't any on the field and one hasn't been queued. It'd be pretty hard to catch two balls otherwise!
-                myLog.log("ABOUT TO LAUNCH!")
+                #myLog.log("ABOUT TO LAUNCH!")
                 ballcolor = random.randint(0, 3)
                 launchdir = random.getrandbits(1)
                 if launchdir: #Gets a random True/False. True: launch from left side, False: launch from right
@@ -644,7 +644,7 @@ while True:
             SCREEN.blit(versionlabel, versionrect.topleft)
             if state == "menuabout":
                 creditspush.trigger()
-                myLog.log("GIANT CIRCLE!")
+                #myLog.log("GIANT CIRCLE!")
                 creditspush.step()
             credits.display((dispmidpointX - 500, creditspush.position))
             
@@ -655,7 +655,7 @@ while True:
                 highscorerect = highscorelabel.get_rect()
                 highscorerect.center= (500, 225)
                 scores.blit(highscorelabel, highscorerect.topleft)
-                myLog.log("GOOOOOOOOOOOOOOOOL!!!")
+                #myLog.log("GOOOOOOOOOOOOOOOOL!!!")
                 scorespush.step()
             SCREEN.blit(scores, (dispmidpointX - 500, scorespush.position))
         ##END MENU CODE#################################################################################            
@@ -1022,6 +1022,8 @@ while True:
                     if keys[K_s] and keys[K_a] and keys[K_m]:
                         easteregg = "sam"
                         okay.play()
+                    if keys[K_d] and keys[K_b] and keys[K_g]:
+                        state = a/0
                         
                 elif state == "menu": #Menu controls
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
