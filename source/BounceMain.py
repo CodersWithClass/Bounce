@@ -586,6 +586,7 @@ while True:
             state = "menustart"        
             
         elif "menu" in state: #Any state that contains the word "Menu"
+
             if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
                 savefile = open('../savefile.txt', 'r')
                 highscore = savefile.readline()
@@ -1022,8 +1023,6 @@ while True:
                     if keys[K_s] and keys[K_a] and keys[K_m]:
                         easteregg = "sam"
                         okay.play()
-                    if keys[K_d] and keys[K_b] and keys[K_g]:
-                        state = a/0
                         
                 elif state == "menu": #Menu controls
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
