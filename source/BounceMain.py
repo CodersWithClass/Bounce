@@ -8,7 +8,10 @@ TODO:
 -Randomize colors
 -Make the ball die after certain amount of time
 -Let players regain lives after a specific number of consecutive shots
--Create a log file that outputs error codes to file after a crash.
+-Change credits
+-Build .app and .exe files of game
+-Update High scores
+-Add some stats on the highscore screen.
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
@@ -31,7 +34,7 @@ pygame.init()
 clock = pygame.time.Clock()
 framerate = 60
 
-version = "Bounce v0.21 Preview Release"
+version = "Bounce v0.22 Preview Release"
 
 oops = [] #List of exceptions thrown during execution. Helps in creating a watchdog.
 
@@ -48,7 +51,7 @@ correct = pygame.mixer.Sound('../assets/Pass.ogg')
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 bouncetitle = pygame.image.load('../assets/BounceTitle.png')
 
-try:
+try: #Basic savefile
     savefile = open('../savefile.txt', 'r')
     highscore = savefile.readline()
     highscore = int(highscore[:len(highscore) - 1])
@@ -197,7 +200,7 @@ target_theta = 0 #The position the paddle should be in (radians)
 current_theta = 0#The current position of the paddle
 d_theta = 0 #Change of angle
 normal_d_theta = PI * 3.5 / 180 #Normal paddle speed
-focus_d_theta = PI * 1.5 / 180 #Focus mode paddle speed
+focus_d_theta = PI * 1 / 180 #Focus mode paddle speed
 max_d_theta = normal_d_theta #Paddle Rotation Speed
 max_theta = PI/4 + .25
 min_theta = -PI/4 - .25
@@ -386,9 +389,9 @@ while True:
             pygame.gfxdraw.aapolygon(SCREEN, pointlist, paddlecolorfade.position)
             
             pygame.gfxdraw.filled_polygon(SCREEN, (arrowhelperUList), arrowhelperU.position)
-            pygame.gfxdraw.aa_polygon(SCREEN, (arrowhelperUList), arrowhelperU.position)
+            pygame.gfxdraw.aapolygon(SCREEN, (arrowhelperUList), arrowhelperU.position)
             pygame.gfxdraw.filled_polygon(SCREEN, (arrowhelperDList), arrowhelperD.position)
-            pygame.gfxdraw.aa_polygon(SCREEN, (arrowhelperDList), arrowhelperD.position)
+            pygame.gfxdraw.aapolygon(SCREEN, (arrowhelperDList), arrowhelperD.position)
             #pygame.draw.line(SCREEN, RED, pointlist[0], pointlist[1], 1) #Collision mesh for paddle
             
             centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
@@ -586,7 +589,6 @@ while True:
             state = "menustart"        
             
         elif "menu" in state: #Any state that contains the word "Menu"
-
             if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
                 savefile = open('../savefile.txt', 'r')
                 highscore = savefile.readline()
@@ -707,6 +709,8 @@ while True:
             
             if state == "paused":
                 #Pause Menu
+                if easteregg == "tcn": #Crashes the game if easter egg activated
+                    5 / 0 #Crashes game. Duh!
                 pausescreen.fill(BLACK)
                 pausecurtain.trigger()
                 pausecurtain.done = False
@@ -795,9 +799,13 @@ while True:
                 gameoverscreen.blit(scorelabel, scorerect.topleft)
                 
                 if score > highscore:
-                    savefile = open('../savefile.txt', 'w')
-                    savefile.write(str(score) + '\n')
-                    savefile.close()
+                    
+                    try:
+                        savefile = open('../savefile.txt', 'w')
+                        savefile.write(str(score) + '\n')
+                        savefile.close()
+                    except IOError:
+                        pass
                     scorelabel = scorefont.render("new record!", 1, WHITE)
                     scorerect = scorelabel.get_rect()
                     scorerect.top = 500
@@ -896,7 +904,7 @@ while True:
                             pygame.quit()
                             sys.exit()
                 if state == "play":
-                    if keys[K_RSHIFT] or keys[K_LSHIFT]: #Pressing SHIFT gives focused control
+                    if keys[K_RSHIFT] or keys[K_LSHIFT] or keys[K_SPACE]: #Pressing SHIFT or SPACE gives focused control
                         max_d_theta = focus_d_theta #Paddle Rotation Speed
                     else:
                         max_d_theta = normal_d_theta #Paddle Rotation Speed
@@ -1023,7 +1031,21 @@ while True:
                     if keys[K_s] and keys[K_a] and keys[K_m]:
                         easteregg = "sam"
                         okay.play()
+                    if keys[K_t] and keys[K_c] and keys[K_n]:
                         
+                        fail.play()
+                        easteregg = "tcn"
+                        normal_d_theta *= -1 #Does a few nefarious things to gameplay >:D
+                        focus_d_theta *= -1
+                        BLUE = (80, 80, 80)
+                        RED = (120, 120, 120)
+                        YELLOW = (160, 160, 160)
+                        GREEN = (200, 200, 200)
+                        
+                        colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will select a random color to make the next ball.
+                        colorlistU = [BLUE, RED, YELLOW, GREEN] #Same color list, shifted back by 1
+                        colorlistD = [YELLOW, GREEN, BLUE, RED] #Shifted forwards by 1
+                        framerate = 10
                 elif state == "menu": #Menu controls
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_LEFT] and not keys[K_RIGHT]:
@@ -1170,6 +1192,17 @@ while True:
                 while True:
                     for event in pygame.event.get():
                         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                            try:
+                                errlog = open('../errors.log', 'w')
+                            except Exception:
+                                pass
+                            writequeue = []
+                            for errors2 in oops:
+                                writequeue.append("EXCEPTION IN MODULE: " + str(errors[0]) + ", LINE " + str(errors[2]) + " " + str(errors[1]) + "\n")
+                            try:
+                                errlog.writelines(writequeue)
+                            except Exception:
+                                pass
                             pygame.quit()
                             sys.exit()
                             
