@@ -2,16 +2,12 @@
 #    See bottom of code for license and terms of use
 '''
 TODO:
--Savefiles, stats, etc.
--Paddle skips color
+-Paddle skips color (sometimes)
 -Inconsistent speed change
 -Randomize colors
 -Make the ball die after certain amount of time
--Let players regain lives after a specific number of consecutive shots
--Change credits
--Build .app and .exe files of game
--Update High scores
--Add some stats on the highscore screen.
+-Let players regain lives after a specific number of consecutive shots? Maybe post-release
+
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
@@ -34,12 +30,11 @@ pygame.init()
 clock = pygame.time.Clock()
 framerate = 60
 
-version = "Bounce v0.22 Preview Release"
+version = "Bounce v0.99 rc2 Pre-Release"
 
 oops = [] #List of exceptions thrown during execution. Helps in creating a watchdog.
 
 #Import files
-okay = pygame.mixer.Sound("../assets/Complete.ogg")
 
 #Different sound effects for hitting different walls
 bounceL = pygame.mixer.Sound('../assets/BounceLeft.ogg')
@@ -50,15 +45,23 @@ correct = pygame.mixer.Sound('../assets/Pass.ogg')
 
 cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
 bouncetitle = pygame.image.load('../assets/BounceTitle.png')
+ 
+#Savefile structure: [High Score, Plays, Total Goals, Missed, Highest Consecutive]
 
 try: #Basic savefile
     savefile = open('../savefile.txt', 'r')
-    highscore = savefile.readline()
-    highscore = int(highscore[:len(highscore) - 1])
+    rawscore = savefile.readline()[:-1].split()
+    highscore = int(rawscore[0])
+    plays = int(rawscore[1])
+    totalgoals = int(rawscore[2])
+    totalmissed = int(rawscore[3])
+    highest_consecutive = int(rawscore[4])
+    
     
 except Exception:
     savefile = open('../savefile.txt', 'w')
-    savefile.write('0\n')
+    savefile.write('0 0 0 0 0\n')
+
 bounceicon = pygame.image.load('../assets/bounce.ico')
 bounceleft = pygame.mixer.Sound('../assets/BounceLeft.ogg') #Sound the ball makes when it hits the left edge of the display. It makes a different sound depending on 
 
@@ -120,6 +123,7 @@ goallist = [REDGOAL, YELLOWGOAL, GREENGOAL, BLUEGOAL]
 
 #Scoring#########
 score = 0
+
 highscore = 0 #High score
 consecutive = 0 #How many balls in a row did the user hit?
 strikes = 0 #How many times did user miss?
@@ -472,6 +476,9 @@ while True:
                         del[ballGroup[count]]
                         strikes += 1
                         fail.play()
+                        if consecutive > highest_consecutive:
+                            highest_consecutive = consecutive
+                        consecutive = 0
                     ##END CODE THING THAT DISAPPEAR OFF BOTTOM
                     
                     ##MAKES BALL BOUNCE ON WALLS
@@ -493,6 +500,8 @@ while True:
                             score += 1
                             correct.play()
                         else: #Incorrect Goal
+                            if consecutive > highest_consecutive:
+                                highest_consecutive = consecutive
                             consecutive = 0
                             strikes += 1
                             fail.play()
@@ -591,11 +600,14 @@ while True:
         elif "menu" in state: #Any state that contains the word "Menu"
             if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
                 savefile = open('../savefile.txt', 'r')
-                highscore = savefile.readline()
-                highscore = int(highscore[:len(highscore) - 1])
+                rawscore = savefile.readline()[:-1].split()
+                highscore = int(rawscore[0])
+                plays = int(rawscore[1])
+                totalgoals = int(rawscore[2])
+                totalmissed = int(rawscore[3])
+                highest_consecutive = int(rawscore[4])
                 
-                pygame.mixer.music.load('../assets/BounceMenu.ogg')
-                pygame.mixer.music.play(-1)
+                
                 goalactionlist[0].trigger()
                 goalactionlist[0].step()
                 pygame.draw.rect(SCREEN, colorlist[-1], (0, 0, int(resX / 4), goalactionlist[0].position))
@@ -607,7 +619,9 @@ while True:
                     for num in range(0,len(goallist)): #Re-renders buttons to "pop-out" when highlighted in main menu sequence
                         goalactionlist[num] = (pykeyframe.Action(GOALHEIGHT, int(GOALHEIGHT * 2.5), 7))
                         goalactionlist[num].render()
-                    state = "menu"  
+                    state = "menu"
+                    pygame.mixer.music.load('../assets/BounceMenu.ogg')
+                    pygame.mixer.music.play(-1)  
             elif state == "menu":
                 for num in range(len(goallist)):
                     #goalactionlist[num].step()
@@ -656,8 +670,28 @@ while True:
                 scores.fill(GREEN)
                 highscorelabel = scorefont.render("high score: " + str(highscore), 1, BLACK)
                 highscorerect = highscorelabel.get_rect()
-                highscorerect.center= (500, 225)
+                highscorerect.midleft = (100, 100)
                 scores.blit(highscorelabel, highscorerect.topleft)
+                
+                highscorelabel = scorefont.render("times played: " + str(plays), 1, BLACK)
+                highscorerect = highscorelabel.get_rect()
+                highscorerect.midleft = (100, 175)
+                scores.blit(highscorelabel, highscorerect.topleft)
+                
+                if totalmissed > 0:
+                    highscorelabel = scorefont.render("accuracy: " + 
+                                                      str(round((float(totalgoals) / (totalgoals + totalmissed)) * 100, 1)) + "%",1, BLACK)
+                else:
+                    highscorelabel = scorefont.render("accuracy: n/a")
+                highscorerect = highscorelabel.get_rect()
+                highscorerect.midleft = (100, 250)
+                scores.blit(highscorelabel, highscorerect.topleft)
+                
+                highscorelabel = scorefont.render("highest consecutive: " + str(highest_consecutive), 1, BLACK)
+                highscorerect = highscorelabel.get_rect()
+                highscorerect.midleft = (100, 325)
+                scores.blit(highscorelabel, highscorerect.topleft)
+                
                 #myLog.log("GOOOOOOOOOOOOOOOOL!!!")
                 scorespush.step()
             SCREEN.blit(scores, (dispmidpointX - 500, scorespush.position))
@@ -799,13 +833,6 @@ while True:
                 gameoverscreen.blit(scorelabel, scorerect.topleft)
                 
                 if score > highscore:
-                    
-                    try:
-                        savefile = open('../savefile.txt', 'w')
-                        savefile.write(str(score) + '\n')
-                        savefile.close()
-                    except IOError:
-                        pass
                     scorelabel = scorefont.render("new record!", 1, WHITE)
                     scorerect = scorelabel.get_rect()
                     scorerect.top = 500
@@ -817,9 +844,12 @@ while True:
                     scorerect.top = 500
                     scorerect.centerx = dispmidpointX
                     gameoverscreen.blit(scorelabel, scorerect.topleft)
+                    
+                    
     
         ##BEGIN PAUSE MENU CODE#################################################################################
         if state =="resetmenu":
+            pygame.mixer.music.stop()
             goalactionlist = []
             curtainsurf = pygame.Surface(cwcrect.size, depth = 32)#Color depth seems to be the main performance drag here. 32-bit works better sometimes, 24-bit others. Blame this if your game lags!
             for num in range(0,len(goallist)): #Adds animation to the onscreen buttons
@@ -1017,6 +1047,7 @@ while True:
                 elif state == "keys":
                     if keys[K_SPACE] or keys[K_RETURN]:
                         state = "newgame"
+                        keyimage.slide = 0
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_RIGHT] and not keys[K_LEFT]:
                             keyimage.step()
@@ -1030,7 +1061,7 @@ while True:
                 elif state == "logo" or state == "logofadeout": #Easter egg!
                     if keys[K_s] and keys[K_a] and keys[K_m]:
                         easteregg = "sam"
-                        okay.play()
+                        state = "newgame"
                     if keys[K_t] and keys[K_c] and keys[K_n]:
                         
                         fail.play()
@@ -1099,6 +1130,23 @@ while True:
                             state = "resetmenu"   
                         if keys[K_a] and not keys[K_d]: 
                             state = "newgame"  
+                    if state == "newgame" or state == "resetmenu": #If any option is selected, save game!
+                        totalmissed += maxstrikes
+                        totalgoals += score
+                        plays += 1
+                        if score > highscore:
+                            highscore = score
+                        try:
+                            savefile = open('../savefile.txt', 'w')
+                            savefile.write(str(highscore) + ' ' + 
+                                           str(plays) + ' ' + 
+                                           str(totalgoals) + ' ' +
+                                           str(totalmissed) + ' ' + 
+                                           str(highest_consecutive) + '\n')
+                            
+                            savefile.close()
+                        except IOError: #Don't do anything if you can't save scores
+                            pass    
                 elif state == "paused":
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_LEFT] and not keys[K_RIGHT]:
@@ -1211,25 +1259,37 @@ while True:
 '''
     Coded with Class by the {CWC} Community in Greenwood, Indiana, USA
     
-    Directed by Jiawei Chen, {CWC} Group Coordinator (a.k.a "theComputerNerd")
-    Sound Design by Sarah Bucker
-    Project Manager: Emily Simon
-    Project Organizer: Austin Freay
-    Communications Coordinator: Thomas Benkert
-    Programming Advisor and Keeper of Sanity: Joseph "Joey" Martz
-    Menu Artwork: Nathan Duke
+    Directed by Jiawei Chen, {CWC} Group Coordinator
+    
+    Programming:
+        Jiawei Chen
+        Emily Simon
+        Joey Martz
+        Taylor Horne
     
     Music:
+        Mixed and Converted by Sarah Bucker
         From Freesound.org:
         "Night - Soft Techno" (BounceBGM.ogg) by edtijo
         "untitled.wav" (BounceMenu.ogg) by -zin-
-    
         
-        Composed by CodersWithClass{} in Audacity and are licensed under the Creative Commons Attribution License:
-        "Complete.ogg"
-        "Fail.ogg"
-        "BounceLeft.ogg"
-        "BounceRight.ogg" 
+        The following sounds were composed by CodersWithClass{} in Audacity and are licensed under the Creative Commons Attribution License:
+            "Fail.ogg"
+            "BounceLeft.ogg"
+            "BounceRight.ogg" 
+    PR:
+        Thomas Benkert
+    
+    Design: 
+        Nathan Duke
+        Sam Caner
+        Sarah Bucker
+        Simon Endris
+        Max Brindle
+        Matt Smith
+        Bret Sexton
+        Austin Freay
+        
     
     =========================== MIT License Statement ===============================
     : Permission is hereby granted, free of charge, to any person obtaining a copy  :
