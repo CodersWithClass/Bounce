@@ -89,6 +89,9 @@ class Action:
     
     def forget(self): #Drops baked frames and un-renders action--frees up resources if that's necessary.
         self.framelist = []
+        self.rendered = False
+        self.triggered = False
+        self.done = False
     
     def reverse(self): #Reverses frame buffer. Current frame buffer position also reversed to correspond with new frame position
         if self.rendered:

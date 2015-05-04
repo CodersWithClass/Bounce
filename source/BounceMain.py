@@ -682,7 +682,7 @@ while True:
                     highscorelabel = scorefont.render("accuracy: " + 
                                                       str(round((float(totalgoals) / (totalgoals + totalmissed)) * 100, 1)) + "%",1, BLACK)
                 else:
-                    highscorelabel = scorefont.render("accuracy: n/a")
+                    highscorelabel = scorefont.render("accuracy: n/a", 1, BLACK)
                 highscorerect = highscorelabel.get_rect()
                 highscorerect.midleft = (100, 250)
                 scores.blit(highscorelabel, highscorerect.topleft)
