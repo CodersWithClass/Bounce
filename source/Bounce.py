@@ -144,6 +144,7 @@ while True:
                 paused = True
                 print("Red Light!")
             else:
+                paused = False
                 print("Green Light!")
         if event.type == KEYDOWN:
             keys = pygame.key.get_pressed()

@@ -11,7 +11,10 @@ TODO:
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
+import pygame._view
 import pygame
+import pygame.mixer
+pygame.mixer.init()
 import sys
 import os
 from pygame.locals import *
@@ -30,26 +33,26 @@ pygame.init()
 clock = pygame.time.Clock()
 framerate = 60
 
-version = "Bounce v0.99 rc2 Pre-Release"
+version = "Bounce v1.00"
 
 oops = [] #List of exceptions thrown during execution. Helps in creating a watchdog.
 
 #Import files
 
 #Different sound effects for hitting different walls
-bounceL = pygame.mixer.Sound('../assets/BounceLeft.ogg')
-bounceR = pygame.mixer.Sound('../assets/BounceRight.ogg')
+bounceL = pygame.mixer.Sound('assets/BounceLeft.ogg')
+bounceR = pygame.mixer.Sound('assets/BounceRight.ogg')
 
-fail = pygame.mixer.Sound('../assets/Fail.ogg')
-correct = pygame.mixer.Sound('../assets/Pass.ogg')
+fail = pygame.mixer.Sound('assets/Fail.ogg')
+correct = pygame.mixer.Sound('assets/Pass.ogg')
 
-cwcsplash = pygame.image.load('../assets/CodersWithClass{}Bounce.png')
-bouncetitle = pygame.image.load('../assets/BounceTitle.png')
+cwcsplash = pygame.image.load('assets/CodersWithClass{}Bounce.png')
+bouncetitle = pygame.image.load('assets/BounceTitle.png')
  
 #Savefile structure: [High Score, Plays, Total Goals, Missed, Highest Consecutive]
 
 try: #Basic savefile
-    savefile = open('../savefile.txt', 'r')
+    savefile = open('savefile.txt', 'r')
     rawscore = savefile.readline()[:-1].split()
     highscore = int(rawscore[0])
     plays = int(rawscore[1])
@@ -59,11 +62,19 @@ try: #Basic savefile
     
     
 except Exception:
-    savefile = open('../savefile.txt', 'w')
+    savefile = open('savefile.txt', 'w')
     savefile.write('0 0 0 0 0\n')
-
-bounceicon = pygame.image.load('../assets/bounce.ico')
-bounceleft = pygame.mixer.Sound('../assets/BounceLeft.ogg') #Sound the ball makes when it hits the left edge of the display. It makes a different sound depending on 
+    savefile.close()
+    savefile = open('savefile.txt', 'r')
+    rawscore = savefile.readline()[:-1].split()
+    highscore = int(rawscore[0])
+    plays = int(rawscore[1])
+    totalgoals = int(rawscore[2])
+    totalmissed = int(rawscore[3])
+    highest_consecutive = int(rawscore[4])
+    savefile.close()
+bounceicon = pygame.image.load('assets/bounce.ico')
+bounceleft = pygame.mixer.Sound('assets/BounceLeft.ogg') #Sound the ball makes when it hits the left edge of the display. It makes a different sound depending on 
 
 
 #Set up display
@@ -75,9 +86,9 @@ resY = displayinfo.current_h
 if isaMac:
     resY -= 22 #This compensates for the height of the taskbar, so the screen actually fills entire screen.
     SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.NOFRAME) #This makes a kinda-full-screen window in Mac--basically a regular window without the buttons or menu bar.
+    os.system('osascript -e "activate me"')
 else:
     SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.FULLSCREEN)#Plays in full 
-pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
 
 #Screen position constants
 dispmidpointX = int(resX / 2)
@@ -257,7 +268,7 @@ bouncetitle = bouncetitle.convert()
 creditspush = pykeyframe.Action(resY, resY - 550, 20)
 creditspush.render()
 creditspush.trigger()
-credits = slideshow.Slideshow(SCREEN, 1000, 550, ['../assets/credits1.png', '../assets/credits2.png'], wrap=False)
+credits = slideshow.Slideshow(SCREEN, 1000, 550, ['assets/credits1.png', 'assets/credits2.png'], wrap=False)
 
 #Scoring
 scorespush = pykeyframe.Action(resY, resY - 550, 20)
@@ -266,11 +277,11 @@ scorespush.trigger()
 scores = pygame.surface.Surface((1000, 550))
 
 #Help slideshow
-keyimage = slideshow.Slideshow(SCREEN, 798, 600, ['../assets/help1.png', 
-                                                  '../assets/help2.png',
-                                                  '../assets/help3.png',
-                                                  '../assets/help4.png',
-                                                  '../assets/help5.png'], wrap=False)
+keyimage = slideshow.Slideshow(SCREEN, 798, 600, ['assets/help1.png', 
+                                                  'assets/help2.png',
+                                                  'assets/help3.png',
+                                                  'assets/help4.png',
+                                                  'assets/help5.png'], wrap=False)
 keyrect = pygame.rect.Rect(0, 0, 798, 600)
 keyrect.center = (dispmidpointX, dispmidpointY)
 
@@ -291,7 +302,7 @@ for num in range(0,len(goallist)): #Adds animation to the onscreen buttons
     goalactionlist.append(pykeyframe.Action(-1, GOALHEIGHT, 7))
     goalactionlist[num].render()
     
-curtainfade = pykeyframe.Action(255, 0, 45) #Animates fading in/out the "curtain" -- black transparent/opaque surface that gives the "fade-in/out" effect
+curtainfade = pykeyframe.Action(255, 0, 120) #Animates fading in/out the "curtain" -- black transparent/opaque surface that gives the "fade-in/out" effect
 curtainfade.render()
 curtainfade.trigger()
 
@@ -352,6 +363,8 @@ gameoverrect.center = (dispmidpointX, 250)
 while True:
 
     try:
+        pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
+
         SCREEN.fill(BLACK)  
         #myLog.log(clock.get_fps())
         #myLog.log(state)
@@ -599,7 +612,7 @@ while True:
             
         elif "menu" in state: #Any state that contains the word "Menu"
             if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
-                savefile = open('../savefile.txt', 'r')
+                savefile = open('savefile.txt', 'r')
                 rawscore = savefile.readline()[:-1].split()
                 highscore = int(rawscore[0])
                 plays = int(rawscore[1])
@@ -620,7 +633,7 @@ while True:
                         goalactionlist[num] = (pykeyframe.Action(GOALHEIGHT, int(GOALHEIGHT * 2.5), 7))
                         goalactionlist[num].render()
                     state = "menu"
-                    pygame.mixer.music.load('../assets/BounceMenu.ogg')
+                    pygame.mixer.music.load('assets/BounceMenu.ogg')
                     pygame.mixer.music.play(-1)  
             elif state == "menu":
                 for num in range(len(goallist)):
@@ -858,7 +871,7 @@ while True:
             menuselect = 0
             state = "menustart"
         if state =="newgame":
-            pygame.mixer.music.load('../assets/BounceBGM.ogg')
+            pygame.mixer.music.load('assets/BounceBGM.ogg')
             pygame.mixer.music.set_volume(1)
             pygame.mixer.music.play()
             paddlecolorfade = pykeyframe.Action(colorlist[0], colorlist[0], 15)
@@ -921,6 +934,7 @@ while True:
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+                        
             elif event.type == KEYDOWN:
                 keys = pygame.key.get_pressed()
                 if isaMac:
@@ -1137,7 +1151,7 @@ while True:
                         if score > highscore:
                             highscore = score
                         try:
-                            savefile = open('../savefile.txt', 'w')
+                            savefile = open('savefile.txt', 'w')
                             savefile.write(str(highscore) + ' ' + 
                                            str(plays) + ' ' + 
                                            str(totalgoals) + ' ' +
@@ -1241,7 +1255,7 @@ while True:
                     for event in pygame.event.get():
                         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                             try:
-                                errlog = open('../errors.log', 'w')
+                                errlog = open('errors.log', 'w')
                             except Exception:
                                 pass
                             writequeue = []
