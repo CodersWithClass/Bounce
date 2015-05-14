@@ -5,6 +5,7 @@ TODO:
 -Paddle skips color (sometimes)
 -Inconsistent speed change
 -Randomize colors
+-Ball phases through paddle (sometimes)
 -Make the ball die after certain amount of time
 -Let players regain lives after a specific number of consecutive shots? Maybe post-release
 
@@ -1083,9 +1084,9 @@ while True:
                         normal_d_theta *= -1 #Does a few nefarious things to gameplay >:D
                         focus_d_theta *= -1
                         BLUE = (80, 80, 80)
-                        RED = (120, 120, 120)
-                        YELLOW = (160, 160, 160)
-                        GREEN = (200, 200, 200)
+                        RED = (100, 100, 100)
+                        YELLOW = (120, 120, 120)
+                        GREEN = (140, 140, 140)
                         
                         colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will select a random color to make the next ball.
                         colorlistU = [BLUE, RED, YELLOW, GREEN] #Same color list, shifted back by 1

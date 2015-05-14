@@ -10,6 +10,10 @@ class Logger:
         #if logfile != None:#open log file
            # self.log = open(logfile, "a")
         self.color = (0, 0, 0)
+        if logfile != None:
+            self.fileOut = open(logfile, 'w+')
+        else:
+            self.fileOut = False
         
     def log(self, text):
         self.buffer.insert(0, text)
@@ -21,5 +25,9 @@ class Logger:
             label = self.myFont.render(str(items), 0, self.color) 
             self.surf.blit(label, (xcoord, ycoord))
             ycoord += self.charheight
-            
+        if self.fileOut != None:
+            try:
+                self.fileOut.write(str(text) + '\n')
+            except IOError: #Don't do anything if you can't save scores
+                pass    
             
