@@ -13,21 +13,22 @@ class Logger:
         if logfile != None:
             self.fileOut = open(logfile, 'w+')
         else:
-            self.fileOut = False
+            self.fileOut = None
         
     def log(self, text):
         self.buffer.insert(0, text)
         while len(self.buffer) > self.maxlines:
             del(self.buffer[-1])
+        if self.fileOut != None:
+            try:
+                self.fileOut.write(str(text) + '\n')
+            except IOError: #Don't do anything if you can't save scores
+                pass    
+    def display(self):
         ycoord = 0
         xcoord = 0
         for items in self.buffer:
             label = self.myFont.render(str(items), 0, self.color) 
             self.surf.blit(label, (xcoord, ycoord))
             ycoord += self.charheight
-        if self.fileOut != None:
-            try:
-                self.fileOut.write(str(text) + '\n')
-            except IOError: #Don't do anything if you can't save scores
-                pass    
             

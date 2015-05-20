@@ -2,20 +2,20 @@
 #    See bottom of code for license and terms of use
 '''
 TODO:
--Paddle skips color (sometimes)
--Inconsistent speed change
--Randomize colors
--Ball phases through paddle (sometimes)
 -Make the ball die after certain amount of time
 -Let players regain lives after a specific number of consecutive shots? Maybe post-release
-
+-Make bonus ball (ball of all colors that gives bonus points if hit into correct goal
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
 import pygame._view
 import pygame
 import pygame.mixer
-pygame.mixer.init()
+noSound = False #Keeps Pygame from throwing an error if no sound card is available
+try:
+    pygame.mixer.init()
+except:
+    noSound = True
 import sys
 import os
 from pygame.locals import *
@@ -33,19 +33,20 @@ isaMac = system() == "Darwin"
 pygame.init()
 clock = pygame.time.Clock()
 framerate = 60
+gametime = 0 #Milliseconds from start
 
-version = "Bounce v1.00"
+version = "Bounce v1.1rc Preliminary Release"
 
 oops = [] #List of exceptions thrown during execution. Helps in creating a watchdog.
 
 #Import files
-
 #Different sound effects for hitting different walls
-bounceL = pygame.mixer.Sound('assets/BounceLeft.ogg')
-bounceR = pygame.mixer.Sound('assets/BounceRight.ogg')
-
-fail = pygame.mixer.Sound('assets/Fail.ogg')
-correct = pygame.mixer.Sound('assets/Pass.ogg')
+if not noSound:
+    bounceL = pygame.mixer.Sound('assets/BounceLeft.ogg') #Sound the ball makes when it hits the left edge of the display. It makes a different sound depending on 
+    bounceR = pygame.mixer.Sound('assets/BounceRight.ogg')
+    
+    fail = pygame.mixer.Sound('assets/Fail.ogg')
+    correct = pygame.mixer.Sound('assets/Pass.ogg')
 
 cwcsplash = pygame.image.load('assets/CodersWithClass{}Bounce.png')
 bouncetitle = pygame.image.load('assets/BounceTitle.png')
@@ -75,7 +76,7 @@ except Exception:
     highest_consecutive = int(rawscore[4])
     savefile.close()
 bounceicon = pygame.image.load('assets/bounce.ico')
-bounceleft = pygame.mixer.Sound('assets/BounceLeft.ogg') #Sound the ball makes when it hits the left edge of the display. It makes a different sound depending on 
+
 
 
 #Set up display
@@ -86,10 +87,22 @@ resX = displayinfo.current_w #Sets up Pygame Window and scales it to fit your sc
 resY = displayinfo.current_h
 if isaMac:
     resY -= 22 #This compensates for the height of the taskbar, so the screen actually fills entire screen.
-    SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.NOFRAME) #This makes a kinda-full-screen window in Mac--basically a regular window without the buttons or menu bar.
+    WINDOW = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.NOFRAME) #This makes a kinda-full-screen window in Mac--basically a regular window without the buttons or menu bar.
     os.system('osascript -e "activate me"')
 else:
-    SCREEN = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.FULLSCREEN)#Plays in full 
+    WINDOW = pygame.display.set_mode((resX, resY), pygame.HWSURFACE|pygame.FULLSCREEN)#Plays in full 
+SCREEN = pygame.surface.Surface((resX, resY))
+windowshake = pykeyframe.Action(0, 20, 30)
+windowshake.render()
+shake_amount = 12
+shakeframes = 2
+windowshake.framelist = []
+for num in range(3):
+    for num in range(shakeframes):
+        windowshake.framelist.append(shake_amount)
+    for num in range(shakeframes):
+        windowshake.framelist.append(0)
+windowshake.num_frames = len(windowshake.framelist)    
 
 #Screen position constants
 dispmidpointX = int(resX / 2)
@@ -116,8 +129,8 @@ colorlist = [RED, YELLOW, GREEN, BLUE] #List of colors for balls--the RNG will s
 colorlistU = [BLUE, RED, YELLOW, GREEN] #Same color list, shifted back by 1
 colorlistD = [YELLOW, GREEN, BLUE, RED] #Shifted forwards by 1
 attrlist = ["RED", "YELLOW", "GREEN", "BLUE"]
-myLog = gamelog.Logger(SCREEN)
-myLog.maxlines = 10
+myLog = gamelog.Logger(SCREEN, logfile="log.log", fontsize=25)
+myLog.maxlines = 25
 myLog.color = WHITE
 
 #Goal Constants Start########
@@ -162,6 +175,7 @@ versionrect.bottomright = (resX - 10, resY - 10)
 class Ball:
     def __init__(self, surf, color, coords, radius, velocity, acceleration, attr = None):
     #Creates an instance of Ball
+        self.timeout = 600.0 #Frames for which ball is scoreable, after which ball will fade out and cause player to get a strike.
         self.coords = list(coords)
         self.color = list(color)
         self.vel = list(velocity)
@@ -170,13 +184,18 @@ class Ball:
         self.surf = surf
         self.radius = radius
         self.goalcollide = False #Is ball colliding with goal zone?
-
+        self.ticks = 0 #Number of times the ball has been updated. Ball will "die" after 10 seconds. 
+        self.balldeath = pykeyframe.Action(radius, 0, 20) #Makes the animation of ball "dying" (makes ball shrink into nothingness)
+        self.balldeath.render()
     def update(self): #Updates the ball's position, velocity, and is where the physics for the ball happen.
+        self.balldeath.step()
+        self.ticks += 1
         self.vel = [self.vel[0] + self.acc[0], self.vel[1] + self.acc[1]]
         self.coords = [self.coords[0] + self.vel[0], 
                        self.coords[1] + self.vel[1]]
         self.goalcollide = self.coords[1] <= 25 + self.radius
-        
+        if self.ticks >= self.timeout - 20:
+            self.balldeath.trigger()
     def bounceY(self):
         self.vel[1] = -self.vel[1]- self.acc[1]
         
@@ -186,13 +205,22 @@ class Ball:
     def draw(self):
         #Draw a smooth circle outline without those jagged pixellated edges
         pygame.gfxdraw.aacircle(self.surf, int(self.coords[0]), 
-                                int(self.coords[1]), self.radius, self.color) 
+                                int(self.coords[1]), self.balldeath.position, self.color) 
         #Draw the filled center of the circle 
         pygame.gfxdraw.filled_circle(self.surf, int(self.coords[0]),                                      
-                                     int(self.coords[1]), self.radius, self.color)
+                                     int(self.coords[1]), self.balldeath.position, self.color)
         #Circles are kinda like chocolate truffles--smooth on the outside, filled on the inside...
-
-
+        sectorlist = [(int(self.coords[0]), int(self.coords[1]))] #Draws arc sectors to overlay pie chart on ball showing time remaining
+        for num in range(0, int(72 * (self.ticks/self.timeout))):
+            sectorlist.append((int(self.coords[0] + self.balldeath.position * .85 * math.cos(math.radians(num * 5))), 
+                               int(self.coords[1] + self.balldeath.position * .85 * math.sin(math.radians(num * 5)))))
+        if len(sectorlist) >=3:
+            pygame.gfxdraw.aapolygon(self.surf, sectorlist, (int(self.color[0] * .45),
+                                                             int(self.color[1] * .45),
+                                                             int(self.color[2] * .45)))
+            pygame.gfxdraw.filled_polygon(self.surf, sectorlist, (int(self.color[0] * .45),
+                                                                  int(self.color[1] * .45),
+                                                                  int(self.color[2] * .45)))
 #Launcher Code Start#######
 launcherY = 75 #Launchers always start 75 pixels from top of screen
 launcherX = 0
@@ -207,7 +235,7 @@ mouse = (0, 0)
 
 ballGroup = []
 count = 0 #Counter variable for list iteration to make list mutable
-ballsize = 10
+ballsize = 15
 #End init. code
 
 ##Start of paddle configuration#################################################################
@@ -310,6 +338,7 @@ curtainfade.trigger()
 menu_options = ["play", "scores", "about", "exit"] #What the buttons on the top say
 menuselect = 0#What the player is currently selecting
 easteregg = None #Easter Egg Variable
+dbgmode = False #Prints out debug text and gives infinite lives and all sorts of cheaty things. But also disables saving
 
 #MENU CODE END
 
@@ -364,13 +393,18 @@ gameoverrect.center = (dispmidpointX, 250)
 while True:
 
     try:
+        gametime = pygame.time.get_ticks()
         pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
 
         SCREEN.fill(BLACK)  
-        #myLog.log(clock.get_fps())
-        #myLog.log(state)
+        if dbgmode:
+            if pygame.mouse.get_pressed()[2]:
+                launchtime = 0
+            myLog.log("====================NEW FRAME====================")
+            myLog.log(str(gametime) + "ms:     " + "FRAMERATE: " + str(clock.get_fps()))
+            myLog.log(str(gametime) + "ms:     " + "STATE:" + state)
         if state == "play" or state == "paused":
-            gametime = pygame.time.get_ticks()
+            
             paddlecolorfade.step()
             arrowhelperU.step()
             arrowhelperD.step()
@@ -383,7 +417,8 @@ while True:
             target_theta -= d_theta
             #print(target_theta)
             current_theta += (target_theta - current_theta) * damp
-            #myLog.log(current_theta)
+            if dbgmode:
+                myLog.log(str(gametime) + "ms:     " + "PADDLE THETA: " + str(current_theta))
             for num in range(0, len(polar_coords)):
                 items = polar_coords[num]
         
@@ -427,13 +462,14 @@ while True:
             ##END PADDLE MOVEMENT CODE #################################################################
             
             ##Ball launcher code########################################
-            #if launchtime != None:
-            #    myLog.log(str(launchtime - gametime))#Gives a countdown until ball is to be launched
-            #else:
-            #    myLog.log(str(len(ballGroup)) + " balls on screen")
+            if dbgmode and launchtime != None:
+                myLog.log(str(gametime) + "ms:     " + "TIME TILL LAUNCH: " + str(launchtime - gametime))#Gives a countdown until ball is to be launched
+            elif dbgmode:
+                myLog.log(str(gametime) + "ms:     " + str(len(ballGroup)) + " balls on screen")
             
             if launchtime == None and len(ballGroup) == 0: #Only tries to launch a ball if there aren't any on the field and one hasn't been queued. It'd be pretty hard to catch two balls otherwise!
-                #myLog.log("ABOUT TO LAUNCH!")
+                if dbgmode:
+                    myLog.log(str(gametime) + "ms:     " + "ABOUT TO LAUNCH!")
                 ballcolor = random.randint(0, 3)
                 launchdir = random.getrandbits(1)
                 if launchdir: #Gets a random True/False. True: launch from left side, False: launch from right
@@ -443,7 +479,9 @@ while True:
     
                 launchtime = gametime + random.randint(250, 2000) #Launches the ball some time in the future from current time. FUUUUTURE!!!
                 
-                ballspeed = random.randint(5, int(score / 3) + 5)
+                #ballspeed = random.randint(5, int(score / 3) + 5) #Old game difficulty model
+                ballspeed = int(105 / (1+math.e**(-0.025*score)) - 46) + random.randint(-2, 2) #New difficulty model--logistic curve that starts at 10, and plateaus at 60 to prevent balls from phasing through paddle
+                
                 launcherdiffX = launcherX - centerpoint[0] #Differences in coordinates between paddle and ball launcher
                 launcherdiffY = launcherY - centerpoint[1] 
                 launcherdist = math.sqrt(launcherdiffX ** 2 + launcherdiffY ** 2)
@@ -468,14 +506,18 @@ while True:
                                               (launcherX + (arrowscale * arrowsize), 
                                                launcherY - int(arrowsize * 0.8) + 1)), colorlist[ballcolor])
             if launchtime != None and  gametime >= launchtime:
+                if dbgmode:
+                    ballcolor = paddlecolor
                 launchtime = None #There already is a ball on the field, so no need to use launchtime to suppress launcher.
                 ballGroup.append(Ball(SCREEN, colorlist[ballcolor], 
                                  (launcherX, launcherY), ballsize, ballvel, (0, 0), 
                                  attrlist[ballcolor]))
-                if launchdir:
-                    bounceL.play()
-                else:
-                    bounceR.play()
+                if not noSound:
+                    if launchdir:
+                        
+                        bounceL.play()
+                    else:
+                        bounceR.play()
             #END BALL LAUNCHER CODE ########################################
             
             ###### BALL UPDATE CODE ########################################
@@ -485,11 +527,20 @@ while True:
                 if state != "paused":
                     pygame.mixer.music.unpause()
                     items.update()
+                    if dbgmode:
+                        myLog.log(str(gametime) + "ms:     " + "BALL SPEED: " + str(ballspeed))
+                        myLog.log(str(gametime) + "ms:     " + "BALL XVEL: " + str(items.vel[0]) + 
+                                  '; BALL YVEL: ' + str(items.vel[1]))
                     ##CODE THING THAT DELETES BALLS WHEN THEY DISAPPEAR OFF BOTTOM OF SCREEN
-                    if items.coords[1] >= resY + items.radius:
+                    if items.coords[1] >= resY + items.radius or items.balldeath.done:
                         del[ballGroup[count]]
-                        strikes += 1
-                        fail.play()
+                        windowshake.rewind()
+                        windowshake.trigger()
+                        if not noSound:
+                            fail.play()
+                        if not dbgmode:
+                            strikes += 1
+
                         if consecutive > highest_consecutive:
                             highest_consecutive = consecutive
                         consecutive = 0
@@ -498,10 +549,11 @@ while True:
                     ##MAKES BALL BOUNCE ON WALLS
                     if (items.coords[0] >= resX - items.radius or 
                             items.coords[0] <= items.radius):
-                        if items.coords[0] >= resX - items.radius:
-                            bounceR.play()
-                        else:
-                            bounceL.play()
+                        if not noSound:
+                            if items.coords[0] >= resX - items.radius:
+                                bounceR.play()
+                            else:
+                                bounceL.play()
                         items.bounceX()
                         
                     ##END WALL BOUNCE CODE
@@ -509,16 +561,21 @@ while True:
                     
                     if items.coords[1] < GOALHEIGHT:
                         #items.bounceY()
-                        if int(items.coords[0]) in goallist[attrlist.index(items.property)]: #Correct Goal
+                        if int(items.coords[0]) in goallist[attrlist.index(items.property)] or dbgmode: #Correct Goal
                             consecutive += 1
                             score += 1
-                            correct.play()
+                            if not noSound:
+                                correct.play()
                         else: #Incorrect Goal
-                            if consecutive > highest_consecutive:
-                                highest_consecutive = consecutive
-                            consecutive = 0
-                            strikes += 1
-                            fail.play()
+                            if not dbgmode:
+                                if consecutive > highest_consecutive:
+                                    highest_consecutive = consecutive
+                                consecutive = 0
+                                strikes += 1
+                            windowshake.rewind()
+                            windowshake.trigger()
+                            if not noSound:
+                                fail.play()
                         del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
                         
                     if (items.coords[1] >= centerpoint[1] - polar_coords[0][0] and 
@@ -533,12 +590,11 @@ while True:
                         d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
                         d2 = math.sqrt((items.coords[1] - p2[1])**2 + (items.coords[0] - p2[0])**2)
                         dist = d1 * math.sin(theta1)
-                        if abs(theta1) <= PI/2 and abs(theta2) <= PI/2 and dist < 10 and dist > -10:
+                        if abs(theta1) <= PI/2 and abs(theta2) <= PI/2 and dist < 10 and dist > -50:
                             #Paddle physics are only enabled if the ball is in contact with the ball
                             
                             #PADDLE PHYSICS##################################################################
                             #This section includes any code that modifies the ball's velocity as a direct result of the paddle
-                            # myLog.log(str(items.vel[0]) + ';' + str(items.vel[1]))
                             length = math.sqrt(items.vel[0]**2 + items.vel[1]**2)
                             thetaV1 = -(math.atan2(items.vel[1], items.vel[0]))
                             thetaV2 = thetaV1 + 2*current_theta
@@ -551,18 +607,22 @@ while True:
                         
                                 theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
                                 d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
-                            correct.play()
-                            #myLog.log(math.degrees(thetaV2)) #Outputs angle of reflected velocity if uncommented
+                            if not noSound:
+                                correct.play()
+                            if dbgmode:
+                                myLog.log(str(gametime) + "ms:     " + "REFLECTED THETA: " + str(math.degrees(thetaV2))) #Outputs angle of reflected velocity if uncommented
                             
                             #END PADDLE PHYSICS##################################################################
-                       
-                    #pygame.draw.line(SCREEN, RED, items.coords, p1, 3)
-                    #pygame.draw.line(SCREEN, RED, items.coords, p2, 3)
-                    #myLog.log(str(math.degrees(theta1)) + ";" + str(math.degrees(theta2))) #Outputs ball's relative angles from edges of paddle when uncommented
+                        if dbgmode:   
+                            pygame.draw.line(SCREEN, RED, items.coords, p1, 3)
+                            pygame.draw.line(SCREEN, RED, items.coords, p2, 3)
+                    
+                            myLog.log(str(gametime) + "ms:     " + "BALL ANGLE TO PADDLE COLLIDERS: " + str(math.degrees(theta1)) + ";" + str(math.degrees(theta2))) #Outputs ball's relative angles from edges of paddle when uncommented
                     
                     ###END COLLIDER CODE    
                 else:
-                    pygame.mixer.music.pause()        
+                    if not noSound:
+                        pygame.mixer.music.pause()        
                 count += 1
                 items.draw()
             #####END BALL UPDATE CODE -- everything else is outside the loop ###############################
@@ -584,10 +644,10 @@ while True:
                 strikelist[num].step()
                 pygame.gfxdraw.filled_circle(SCREEN, resX - ((num + 1) * 50), resY - 75, 14, strikelist[num].position)
                 pygame.gfxdraw.aacircle(SCREEN, resX - ((num + 1) * 50), resY - 75, 14, strikelist[num].position)
-            #myLog.log("SCORE: " + str(score) + "; " + 
-            #          str(consecutive) + " IN A ROW; " + 
-            #          str(strikes) + " STRIKES") 
-            #myLog.log(pygame.time.get_ticks() - starttime)  
+            if dbgmode:
+                myLog.log(str(gametime) + "ms:     " + "SCORE: " + str(score) + "; " + 
+                          str(consecutive) + " IN A ROW; " + 
+                          str(strikes) + " STRIKES") 
             scorelabel = scorefont.render("score: " + str(score), 1, WHITE)
             scorerect = scorelabel.get_rect()
             scorerect.bottomleft = (50, resY - 60)
@@ -634,8 +694,9 @@ while True:
                         goalactionlist[num] = (pykeyframe.Action(GOALHEIGHT, int(GOALHEIGHT * 2.5), 7))
                         goalactionlist[num].render()
                     state = "menu"
-                    pygame.mixer.music.load('assets/BounceMenu.ogg')
-                    pygame.mixer.music.play(-1)  
+                    if not noSound:
+                        pygame.mixer.music.load('assets/BounceMenu.ogg')
+                        pygame.mixer.music.play(-1)  
             elif state == "menu":
                 for num in range(len(goallist)):
                     #goalactionlist[num].step()
@@ -675,7 +736,8 @@ while True:
             SCREEN.blit(versionlabel, versionrect.topleft)
             if state == "menuabout":
                 creditspush.trigger()
-                #myLog.log("GIANT CIRCLE!")
+                if dbgmode:
+                    myLog.log(str(gametime) + "ms:     " + "GIANT CIRCLE!")
                 creditspush.step()
             credits.display((dispmidpointX - 500, creditspush.position))
             
@@ -706,7 +768,8 @@ while True:
                 highscorerect.midleft = (100, 325)
                 scores.blit(highscorelabel, highscorerect.topleft)
                 
-                #myLog.log("GOOOOOOOOOOOOOOOOL!!!")
+                if dbgmode:
+                    myLog.log(str(gametime) + "ms:     " + "GOOOOOOOOOOOOOOOOL!!!")
                 scorespush.step()
             SCREEN.blit(scores, (dispmidpointX - 500, scorespush.position))
         ##END MENU CODE#################################################################################            
@@ -810,7 +873,8 @@ while True:
                 pausecurtain.backstep()
             if state == "gameover":
                 #Pause Menu
-                pygame.mixer.music.set_volume(.5)
+                if not noSound:
+                    pygame.mixer.music.set_volume(.5)
                 gameoverscreen.fill(BLACK)
                 gameovercurtain.trigger()
                 gameovercurtain.done = False
@@ -863,7 +927,8 @@ while True:
     
         ##BEGIN PAUSE MENU CODE#################################################################################
         if state =="resetmenu":
-            pygame.mixer.music.stop()
+            if not noSound:
+                pygame.mixer.music.stop()
             goalactionlist = []
             curtainsurf = pygame.Surface(cwcrect.size, depth = 32)#Color depth seems to be the main performance drag here. 32-bit works better sometimes, 24-bit others. Blame this if your game lags!
             for num in range(0,len(goallist)): #Adds animation to the onscreen buttons
@@ -872,9 +937,10 @@ while True:
             menuselect = 0
             state = "menustart"
         if state =="newgame":
-            pygame.mixer.music.load('assets/BounceBGM.ogg')
-            pygame.mixer.music.set_volume(1)
-            pygame.mixer.music.play()
+            if not noSound:
+                pygame.mixer.music.load('assets/BounceBGM.ogg')
+                pygame.mixer.music.set_volume(1)
+                pygame.mixer.music.play()
             paddlecolorfade = pykeyframe.Action(colorlist[0], colorlist[0], 15)
             
             paddlecolorfade.render()
@@ -912,7 +978,8 @@ while True:
                 strikelist.append(pykeyframe.Action(GREEN, RED, 10))
                 strikelist[num].render()
             scorelabel = scorefont.render("9001", 1, WHITE)
-            pygame.mixer.music.play(-1)
+            if not noSound:
+                pygame.mixer.music.play(-1)
             state = "play"
             ballGroup = []
             current_theta = 0
@@ -935,7 +1002,9 @@ while True:
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
-                        
+            elif event.type == MOUSEBUTTONDOWN:
+                if dbgmode:
+                    launchtime = 0
             elif event.type == KEYDOWN:
                 keys = pygame.key.get_pressed()
                 if isaMac:
@@ -949,6 +1018,8 @@ while True:
                             pygame.quit()
                             sys.exit()
                 if state == "play":
+                    if dbgmode and keys[K_m]: #Matrix button slows down action
+                        framerate = 1
                     if keys[K_RSHIFT] or keys[K_LSHIFT] or keys[K_SPACE]: #Pressing SHIFT or SPACE gives focused control
                         max_d_theta = focus_d_theta #Paddle Rotation Speed
                     else:
@@ -1075,8 +1146,10 @@ while True:
                             keyimage.backstep() 
                 elif state == "logo" or state == "logofadeout": #Easter egg!
                     if keys[K_s] and keys[K_a] and keys[K_m]:
-                        easteregg = "sam"
                         state = "newgame"
+                    if keys[K_d] and keys[K_b] and keys[K_m]:
+                        dbgmode = True
+                        correct.play()
                     if keys[K_t] and keys[K_c] and keys[K_n]:
                         
                         fail.play()
@@ -1151,17 +1224,18 @@ while True:
                         plays += 1
                         if score > highscore:
                             highscore = score
-                        try:
-                            savefile = open('savefile.txt', 'w')
-                            savefile.write(str(highscore) + ' ' + 
-                                           str(plays) + ' ' + 
-                                           str(totalgoals) + ' ' +
-                                           str(totalmissed) + ' ' + 
-                                           str(highest_consecutive) + '\n')
-                            
-                            savefile.close()
-                        except IOError: #Don't do anything if you can't save scores
-                            pass    
+                        if not dbgmode:
+                            try:
+                                savefile = open('savefile.txt', 'w')
+                                savefile.write(str(highscore) + ' ' + 
+                                               str(plays) + ' ' + 
+                                               str(totalgoals) + ' ' +
+                                               str(totalmissed) + ' ' + 
+                                               str(highest_consecutive) + '\n') 
+                                
+                                savefile.close()
+                            except IOError: #Don't do anything if you can't save scores
+                                pass    
                 elif state == "paused":
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_LEFT] and not keys[K_RIGHT]:
@@ -1227,17 +1301,25 @@ while True:
                             state = "paused"
             elif event.type == KEYUP:
                 keys = event.key
+                if keys == K_m:
+                        framerate = 60
                 if state == "play":
+                    
                     if keys == K_LEFT or keys == K_RIGHT or keys == K_a or keys == K_d:
                         d_theta = 0
         clock.tick(framerate)
+        if dbgmode:
+            myLog.display()
+        windowshake.step()
+        WINDOW.blit(SCREEN, (0, windowshake.position))
         pygame.display.flip()
         
 
     except Exception: #Hopefully none of this ever has to get executed :)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        oops.append((exc_type, fname, exc_tb.tb_lineno))
+        oops.append((exc_type, fname, exc_tb.tb_lineno, str(exc_obj)))
+        myLog.log(str(gametime) + "ms:     " + "WHOOPS! :P: " + str(exc_type) + " IN " + str(fname) + " ON LINE " + str(exc_tb.tb_lineno) + ": " + str(exc_obj))
         for errors in oops:
             if oops.count(errors) > 10: #Watchdog timer--set limit for how many exceptions to pass before throwing an error.
                 whoopsfont = pygame.font.Font(None, 250) #Displays "WHOOPS! :P" on screen when an error occurs.
@@ -1249,8 +1331,12 @@ while True:
                 SCREEN.fill(BLACK)
                 SCREEN.blit(whoopslabel, whoopsrect.topleft)
                 SCREEN.blit(exceptlabel, (100, resY - 150))
+                exceptlabel = exceptfont.render("REASON: " + errors[3], 1, WHITE)
+                SCREEN.blit(whoopslabel, whoopsrect.topleft)
+                SCREEN.blit(exceptlabel, (100, resY - 100))
                 exceptlabel = exceptfont.render("PYTHON HAS ENCOUNTERED A PROBLEM AND NEEDS TO CLOSE. PRESS [ESC] TO EXIT...", 1, WHITE)
                 SCREEN.blit(exceptlabel, (100, resY - 200))
+                WINDOW.blit(SCREEN, (0, 0))
                 pygame.display.update()
                 while True:
                     for event in pygame.event.get():
