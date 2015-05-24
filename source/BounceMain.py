@@ -331,8 +331,17 @@ for num in range(0,len(goallist)): #Adds animation to the onscreen buttons
     goalactionlist.append(pykeyframe.Action(-1, GOALHEIGHT, 7))
     goalactionlist[num].render()
     
-curtainfade = pykeyframe.Action(255, 0, 120) #Animates fading in/out the "curtain" -- black transparent/opaque surface that gives the "fade-in/out" effect
+curtainfade = pykeyframe.Action(255, 0, 60) #Animates fading in/out the "curtain" -- black transparent/opaque surface that gives the "fade-in/out" effect
 curtainfade.render()
+#Makes action group that combines fade-in, waits for some frames, and then reverse the action to fade back out
+curtainframelist = []
+curtainframelist.extend(curtainfade.framelist)
+for num in range(60):
+    curtainframelist.append(0)
+curtainfade.framelist.reverse()
+curtainframelist.extend(curtainfade.framelist)
+curtainfade.framelist = curtainframelist
+curtainfade.num_frames = len(curtainframelist)
 curtainfade.trigger()
 
 menu_options = ["play", "scores", "about", "exit"] #What the buttons on the top say
@@ -480,7 +489,7 @@ while True:
                 launchtime = gametime + random.randint(250, 2000) #Launches the ball some time in the future from current time. FUUUUTURE!!!
                 
                 #ballspeed = random.randint(5, int(score / 3) + 5) #Old game difficulty model
-                ballspeed = int(105 / (1+math.e**(-0.025*score)) - 46) + random.randint(-2, 2) #New difficulty model--logistic curve that starts at 10, and plateaus at 60 to prevent balls from phasing through paddle
+                ballspeed = int(105 / (1+math.e**(-0.013*score)) - 46) + random.randint(-2, 2) #New difficulty model--logistic curve that starts at 10, and plateaus at 60 to prevent balls from phasing through paddle
                 
                 launcherdiffX = launcherX - centerpoint[0] #Differences in coordinates between paddle and ball launcher
                 launcherdiffY = launcherY - centerpoint[1] 
@@ -656,20 +665,14 @@ while True:
         ##MAIN MENU CODE#################################################################################
         elif state == "keys": #Shows the beginning help image with key controls
             keyimage.display(keyrect.topleft)
-        elif state == "logo" or state == "logofadeout": #All these are elif statements so they don't get evaluated if they don't need to. This saves lots of time when running the state machine.
+        elif state == "logo": #All these are elif statements so they don't get evaluated if they don't need to. This saves lots of time when running the state machine.
             curtainfade.step()
             curtainsurf.set_alpha(curtainfade.position)
             SCREEN.blit(cwcsplash, cwcrect.topleft)
             SCREEN.blit(curtainsurf, cwcrect.topleft)
             
-        if curtainfade.done and state == "logo":
-            curtainfade.reverse()
-            curtainfade.rewind()
-            curtainfade.trigger()
-            state = "logofadeout"
-            
-        elif curtainfade.done and state == "logofadeout":
-            state = "menustart"        
+            if curtainfade.done:
+                state = "menustart"    
             
         elif "menu" in state: #Any state that contains the word "Menu"
             if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
@@ -1144,7 +1147,7 @@ while True:
                             keyimage.step()   
                         if keys[K_a] and not keys[K_d]: 
                             keyimage.backstep() 
-                elif state == "logo" or state == "logofadeout": #Easter egg!
+                elif state == "logo": #Easter egg!
                     if keys[K_s] and keys[K_a] and keys[K_m]:
                         state = "newgame"
                     if keys[K_d] and keys[K_b] and keys[K_m]:
