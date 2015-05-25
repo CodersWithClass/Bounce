@@ -9,7 +9,13 @@ TODO:
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
 try:
-    import pygame._view
+    display_init = False #If display is initialized, display killscreen if an error is encountered. Else, just log the error to prevent causing another error in the process of handling the original error.
+    safeExit = False #This gets set to true when program has exited cleanly, for logging purposes.
+    try:
+        import pygame._view#This needs to be in a try catch because it somehow has errors every now and then.
+    except:
+        pass
+    
     import pygame
     import pygame.mixer
     noSound = False #Keeps Pygame from throwing an error if no sound card is available
@@ -37,7 +43,7 @@ try:
     gametime = 0 #Milliseconds from start
     
     version = "Bounce v1.1rc Preliminary Release"
-    display_init = False #If display is initialized, display killscreen if an error is encountered. Else, just log the error to prevent causing another error in the process of handling the original error.
+    
     
         #Set up display
     bounceicon = pygame.image.load('assets/bounce.ico')
@@ -86,7 +92,7 @@ try:
         highest_consecutive = int(rawscore[4])
         
     
-    except Exception:
+    except:
         savefile = open('savefile.txt', 'w')
         savefile.write('0 0 0 0 0\n')
         savefile.close()
@@ -1008,6 +1014,7 @@ try:
     #EVENT HANDLER CODE########
         for event in pygame.event.get():
             if event.type == QUIT:
+                safeExit = True
                 pygame.quit()
                 sys.exit()
             elif event.type == MOUSEBUTTONDOWN:
@@ -1018,11 +1025,13 @@ try:
                 if isaMac:
                     if keys[K_LMETA] or keys[K_RMETA]:
                         if keys[K_q] or keys[K_w]:
+                            safeExit = True #Tells error handler to ignore SystemExit exception as this is normal behavior.
                             pygame.quit()
                             sys.exit()
                 else:
                     if keys[K_LCTRL] or keys[K_RCTRL]:
                         if keys[K_q] or keys[K_w]:
+                            safeExit = True
                             pygame.quit()
                             sys.exit()
                 if state == "play":
@@ -1295,6 +1304,7 @@ try:
                             elif state == "clearsure":
                                 pass
                             elif state =="exitsure":
+                                safeExit = True
                                 pygame.quit()
                                 sys.exit()
                         elif keys[K_s] and not keys[K_w]:
@@ -1323,50 +1333,52 @@ try:
         pygame.display.flip()
         
 
-except Exception: #Hopefully none of this ever has to get executed :)
-    exc_type, exc_obj, exc_tb = sys.exc_info()
-    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-    errors = ((exc_type, fname, exc_tb.tb_lineno, str(exc_obj)))
-    try:
-        myLog.log(str(gametime) + "ms:     " + "WHOOPS! :P: " + str(exc_type) + " IN " + str(fname) + " ON LINE " + str(exc_tb.tb_lineno) + ": " + str(exc_obj))
-    except:
-        pass
+except: #Hopefully none of this ever has to get executed :)
+    if not safeExit:
+        import sys
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        errors = ((exc_type, fname, exc_tb.tb_lineno, str(exc_obj)))
+        try:
+            myLog.log(str(gametime) + "ms:     " + "WHOOPS! :P: " + str(exc_type) + " IN " + str(fname) + " ON LINE " + str(exc_tb.tb_lineno) + ": " + str(exc_obj))
+        except:
+            pass
+        
+        try:
+            errlog = open('errors.log', 'a')
+        except:
+            pass
+        writequeue = []
     
-    try:
-        errlog = open('errors.log', 'a')
-    except Exception:
-        pass
-    writequeue = []
-
-    writequeue.append("EXCEPTION IN MODULE: " + str(errors[0]) + ", LINE " + str(errors[2]) + " " + str(errors[1]) + " REASON: " + str(errors[3]) + "\n")
-    try:
-        errlog.writelines(writequeue)
-    except Exception:
-        pass
-    
-    if display_init:
-        WHITE = (255, 255, 255)
-        whoopsfont = pygame.font.Font(None, 250) #Displays "WHOOPS! :P" on screen when an error occurs.
-        whoopslabel = whoopsfont.render("WHOOPS! :P", 1, WHITE)
-        whoopsrect = whoopslabel.get_rect()
-        whoopsrect.center = (dispmidpointX, dispmidpointY)
-        exceptfont = pygame.font.Font(None, 36) #Displays actual error
-        exceptlabel = exceptfont.render("EXCEPTION IN MODULE: " + str(errors[0]) + ", LINE " + str(errors[2]) + " OF " + str(errors[1]), 1, WHITE)
-        SCREEN.fill(BLACK)
-        SCREEN.blit(whoopslabel, whoopsrect.topleft)
-        SCREEN.blit(exceptlabel, (100, resY - 150))
-        exceptlabel = exceptfont.render("REASON: " + errors[3], 1, WHITE)
-        SCREEN.blit(whoopslabel, whoopsrect.topleft)
-        SCREEN.blit(exceptlabel, (100, resY - 100))
-        exceptlabel = exceptfont.render("PYTHON HAS ENCOUNTERED A PROBLEM AND NEEDS TO CLOSE. PRESS [ESC] TO EXIT...", 1, WHITE)
-        SCREEN.blit(exceptlabel, (100, resY - 200))
-        WINDOW.blit(SCREEN, (0, 0))
-        pygame.display.update()
-        while True:
-            for event in pygame.event.get():
-                if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                    pygame.quit()
-                    sys.exit()
+        writequeue.append("EXCEPTION IN MODULE: " + str(errors[0]) + ", LINE " + str(errors[2]) + " " + str(errors[1]) + " REASON: " + str(errors[3]) + "\n")
+        try:
+            errlog.writelines(writequeue)
+        except:
+            pass
+        
+        if display_init:
+            WHITE = (255, 255, 255)
+            whoopsfont = pygame.font.Font(None, 250) #Displays "WHOOPS! :P" on screen when an error occurs.
+            whoopslabel = whoopsfont.render("WHOOPS! :P", 1, WHITE)
+            whoopsrect = whoopslabel.get_rect()
+            whoopsrect.center = (dispmidpointX, dispmidpointY)
+            exceptfont = pygame.font.Font(None, 36) #Displays actual error
+            exceptlabel = exceptfont.render("EXCEPTION IN MODULE: " + str(errors[0]) + ", LINE " + str(errors[2]) + " OF " + str(errors[1]), 1, WHITE)
+            SCREEN.fill(BLACK)
+            SCREEN.blit(whoopslabel, whoopsrect.topleft)
+            SCREEN.blit(exceptlabel, (100, resY - 150))
+            exceptlabel = exceptfont.render("REASON: " + errors[3], 1, WHITE)
+            SCREEN.blit(whoopslabel, whoopsrect.topleft)
+            SCREEN.blit(exceptlabel, (100, resY - 100))
+            exceptlabel = exceptfont.render("PYTHON HAS ENCOUNTERED A PROBLEM AND NEEDS TO CLOSE. PRESS [ESC] TO EXIT...", 1, WHITE)
+            SCREEN.blit(exceptlabel, (100, resY - 200))
+            WINDOW.blit(SCREEN, (0, 0))
+            pygame.display.update()
+            while True:
+                for event in pygame.event.get():
+                    if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                        pygame.quit()
+                        sys.exit()
                                 
 
 
