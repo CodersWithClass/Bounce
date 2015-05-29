@@ -11,11 +11,7 @@ TODO:
 try:
     display_init = False #If display is initialized, display killscreen if an error is encountered. Else, just log the error to prevent causing another error in the process of handling the original error.
     safeExit = False #This gets set to true when program has exited cleanly, for logging purposes.
-    try:
-        import pygame._view#This needs to be in a try catch because it somehow has errors every now and then.
-    except:
-        pass
-    
+    import pygame._view
     import pygame
     import pygame.mixer
     noSound = False #Keeps Pygame from throwing an error if no sound card is available
