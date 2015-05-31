@@ -2,9 +2,8 @@
 #    See bottom of code for license and terms of use
 '''
 TODO:
--Make the ball die after certain amount of time
 -Let players regain lives after a specific number of consecutive shots? Maybe post-release
--Make bonus ball (ball of all colors that gives bonus points if hit into correct goal
+-Make bonus ball (ball of all colors that gives bonus points if hit into correct goal)
 '''
 
 #Setup thingies for Pygame. This includes display information, all necessary imports and dependencies (including external files), and major constants. #########################
@@ -160,7 +159,7 @@ try:
     highscore = 0 #High score
     consecutive = 0 #How many balls in a row did the user hit?
     strikes = 0 #How many times did user miss?
-    maxstrikes = 5 #Maximum number of strikes
+    maxstrikes = 2 #Maximum number of strikes
     strikelist = [] #List of strike "icons" to display on scoreboard
     for num in range(maxstrikes):
         strikelist.append(pykeyframe.Action(GREEN, RED, 10))
@@ -556,6 +555,10 @@ try:
                             fail.play()
                         if not dbgmode:
                             strikes += 1
+                            if strikes == maxstrikes - 1: #Plays faster music on last life
+                                musicpos = pygame.mixer.music.get_pos() #Gets current position of music
+                                pygame.mixer.music.load("assets/BounceBGM_Faster.ogg") #25% faster version of music
+                                pygame.mixer.music.play(loops = -1, start = musicpos * .00075) #Makes music resume playing from same position, but at faster tempo.
 
                         if consecutive > highest_consecutive:
                             highest_consecutive = consecutive
@@ -588,6 +591,10 @@ try:
                                     highest_consecutive = consecutive
                                 consecutive = 0
                                 strikes += 1
+                                if strikes == maxstrikes - 1: #Same as above when you get one life left.
+                                    musicpos = pygame.mixer.music.get_pos()
+                                    pygame.mixer.music.load("assets/BounceBGM_Faster.ogg")
+                                    pygame.mixer.music.play(loops = -1, start = musicpos * .00075)
                             windowshake.rewind()
                             windowshake.trigger()
                             if not noSound:
@@ -1283,6 +1290,7 @@ try:
                             elif state == "clearsure":
                                 pass
                             elif state =="exitsure":
+                                safeExit = True
                                 pygame.quit()
                                 sys.exit()
                                 
