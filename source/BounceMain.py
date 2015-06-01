@@ -37,7 +37,7 @@ try:
     framerate = 60
     gametime = 0 #Milliseconds from start
     
-    version = "Bounce v1.1rc Preliminary Release"
+    version = "Bounce v1.2rc Preliminary Release"
     
     
         #Set up display
