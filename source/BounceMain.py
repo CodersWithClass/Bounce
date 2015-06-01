@@ -418,6 +418,7 @@ try:
             myLog.log("====================NEW FRAME====================")
             myLog.log(str(gametime) + "ms:     " + "FRAMERATE: " + str(clock.get_fps()))
             myLog.log(str(gametime) + "ms:     " + "STATE:" + state)
+
         if state == "play" or state == "paused":
             
             paddlecolorfade.step()
@@ -558,7 +559,8 @@ try:
                             if strikes == maxstrikes - 1: #Plays faster music on last life
                                 musicpos = pygame.mixer.music.get_pos() #Gets current position of music
                                 pygame.mixer.music.load("assets/BounceBGM_Faster.ogg") #25% faster version of music
-                                pygame.mixer.music.play(loops = -1, start = musicpos * .00075) #Makes music resume playing from same position, but at faster tempo.
+                                
+                                pygame.mixer.music.play(loops = -1, start = (musicpos - (23997.0 * int(musicpos / 23997.0))) * .00075) #Makes music resume playing from same position, but at faster tempo.
 
                         if consecutive > highest_consecutive:
                             highest_consecutive = consecutive
@@ -594,7 +596,7 @@ try:
                                 if strikes == maxstrikes - 1: #Same as above when you get one life left.
                                     musicpos = pygame.mixer.music.get_pos()
                                     pygame.mixer.music.load("assets/BounceBGM_Faster.ogg")
-                                    pygame.mixer.music.play(loops = -1, start = musicpos * .00075)
+                                    pygame.mixer.music.play(loops = -1, start = (musicpos - (23997.0 * int(musicpos / 23997.0))) * .00075)
                             windowshake.rewind()
                             windowshake.trigger()
                             if not noSound:
