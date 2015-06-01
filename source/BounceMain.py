@@ -159,7 +159,7 @@ try:
     highscore = 0 #High score
     consecutive = 0 #How many balls in a row did the user hit?
     strikes = 0 #How many times did user miss?
-    maxstrikes = 2 #Maximum number of strikes
+    maxstrikes = 5 #Maximum number of strikes
     strikelist = [] #List of strike "icons" to display on scoreboard
     for num in range(maxstrikes):
         strikelist.append(pykeyframe.Action(GREEN, RED, 10))
