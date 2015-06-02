@@ -624,14 +624,21 @@ try:
                             thetaV1 = -(math.atan2(items.vel[1], items.vel[0]))
                             thetaV2 = thetaV1 + 2*current_theta
                             items.vel[0] = (math.cos(thetaV2) * length) 
-                            items.vel[1] = (math.sin(thetaV2) * length)   
-                            while dist < 10 and dist > -50: #This keeps ball from getting "stuck" in paddle by repeatedly trying to move the ball outside the paddle until ball is a set distance away, but also prevents game from hanging if ball bounces "the other way"
-                                items.coords[0] += items.vel[0]
-                                items.coords[1] += items.vel[1]
-                                dist = d1 * math.sin(theta1)
-                        
-                                theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
-                                d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
+                            items.vel[1] = (math.sin(thetaV2) * length) 
+                            old_dist = dist #compares distance moved when ball is animated. This keeps the bottom loop from getting stuck and overflowing if ball doesn't move much between frames.  
+                            items.coords[0] += items.vel[0]
+                            dist = d1 * math.sin(theta1)
+                            theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
+                            d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
+                            if abs(old_dist - dist) > 1:
+                                while dist < 10 and dist > -50: #This keeps ball from getting "stuck" in paddle by repeatedly trying to move the ball outside the paddle until ball is a set distance away, but also prevents game from hanging if ball bounces "the other way"
+                                    items.coords[0] += items.vel[0]
+                                    items.coords[1] += items.vel[1]
+                                    dist = d1 * math.sin(theta1)
+                                    if abs(old_dist - dist) < 1:
+                                        break #Kicks out of potential infinite loop situation.
+                                    theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
+                                    d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
                             if not noSound:
                                 correct.play()
                             if dbgmode:
