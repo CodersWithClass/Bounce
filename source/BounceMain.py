@@ -294,6 +294,9 @@ try:
         dist = math.sqrt(coords[0] ** 2 + coords[1] ** 2)
         new_coords = (dist, math.atan2(coords[1], coords[0]))
         polar_coords_arrowD.append(new_coords)
+        
+    centerpoint = (int(pointlist[0][0] + (pointlist[1][0] - pointlist[0][0]) / 2), 
+                        int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
     ##End of paddle configuration#################################################################
     
     #Image optimization by converting image surfaces to same format as display
@@ -411,7 +414,42 @@ try:
         gametime = pygame.time.get_ticks()
         pygame.mouse.set_visible(False) #Makes the mouse invisible. This discourages people from trying to use it as an input device
 
-        SCREEN.fill(BLACK)  
+#BRAND NEW SCREEN FILL CODE!!! ############################################################
+        if dbgmode and state == "play":
+            SCREEN.fill((255, 0, 255)) #If debug mode, fill screen with magenta to better highlight refresh areas.
+    
+        if state == "play":
+            for obj in ballGroup: #All this tries to avoid calling the fill command, which puts a rather large load on the CPU.
+                pygame.draw.rect(SCREEN, BLACK, 
+                                 (int(obj.coords[0]- obj.radius - 5), 
+                                  int(obj.coords[1] - obj.radius - 5), 
+                                  int(obj.radius*2 + 10), 
+                                  int(obj.radius*2 + 10))) #Fills over previous frame's balls to make them blend in with background again.
+                
+            pygame.draw.rect(SCREEN, BLACK, 
+                             (0, 
+                              centerpoint[1] - polar_coords[0][0] - 10, 
+                              resX, 
+                              resY - (centerpoint[1] - polar_coords[0][0]) + 10)) #Fills a rectangle starting from the top of the paddle to the bottom of the screen.
+            
+            thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
+            for num in range(1, 9):
+                if num % 2 == 0:
+                    pygame.draw.line(SCREEN, BLACK, 
+                                     (centerpoint[0] + (math.cos(thetapredict) * (num * 20)),
+                                      centerpoint[1] + (math.sin(thetapredict) * (num * 20))), 
+                                     (centerpoint[0] + (math.cos(thetapredict) * ((num + 1) * 20)), 
+                                      centerpoint[1] + (math.sin(thetapredict) * ((num + 1) * 20))), 10) #Draws over old "prediction line" to make that area black again. This prevents unnecessary calls to the fill command.
+            try:
+                pygame.draw.rect(SCREEN, BLACK, (0, 0, resX, launcherY + arrowsize))
+            except:
+                pass#Sometimes Python doesn't like this line of code, so we try it.
+        else:
+            SCREEN.fill(BLACK)     
+        
+            
+#END BRAND NEW SCREEN FILL CODE!!! ############################################################
+
         if dbgmode:
             if pygame.mouse.get_pressed()[2]:
                 launchtime = 0
@@ -420,7 +458,6 @@ try:
             myLog.log(str(gametime) + "ms:     " + "STATE:" + state)
 
         if state == "play" or state == "paused":
-            
             paddlecolorfade.step()
             arrowhelperU.step()
             arrowhelperD.step()
@@ -467,16 +504,8 @@ try:
                         int(pointlist[0][1] + (pointlist[1][1] - pointlist[0][1]) / 2))
             #pygame.draw.circle(SCREEN, RED, centerpoint, 10)
             
-            if len(ballGroup) != 0  or True:# and ballGroup[0].vel[1] > 0:
-                thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
-                for num in range(1, 9):
-                    if num % 2 == 0:
-                        pygame.draw.line(SCREEN, paddlecolorfade.position, (centerpoint[0] + (math.cos(thetapredict) * (num * 20)),
-                                                                      centerpoint[1] + (math.sin(thetapredict) * (num * 20))), 
-                                         (centerpoint[0] + (math.cos(thetapredict) * ((num + 1) * 20)), 
-                                          centerpoint[1] + (math.sin(thetapredict) * ((num + 1) * 20))), 5) #Draws dashed "prediction line" showing ball's projected trajectory
-            ##END PADDLE MOVEMENT CODE #################################################################
-            
+ ##END PADDLE MOVEMENT CODE #################################################################
+ 
             ##Ball launcher code########################################
             if dbgmode and launchtime != None:
                 myLog.log(str(gametime) + "ms:     " + "TIME TILL LAUNCH: " + str(launchtime - gametime))#Gives a countdown until ball is to be launched
@@ -535,7 +564,17 @@ try:
                     else:
                         bounceR.play()
             #END BALL LAUNCHER CODE ########################################
-            
+#Angle Prediction Line on Paddle ########################################
+            thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
+            for num in range(1, 9):
+                if num % 2 == 0:
+                    pygame.draw.line(SCREEN, paddlecolorfade.position, (centerpoint[0] + (math.cos(thetapredict) * (num * 20)),
+                                                                  centerpoint[1] + (math.sin(thetapredict) * (num * 20))), 
+                                     (centerpoint[0] + (math.cos(thetapredict) * ((num + 1) * 20)), 
+                                      centerpoint[1] + (math.sin(thetapredict) * ((num + 1) * 20))), 5) #Draws dashed "prediction line" showing ball's projected trajectory
+
+#END Angle Prediction Line on Paddle ########################################            
+                        
             ###### BALL UPDATE CODE ########################################
             while count < len(ballGroup):#Allows the list to become modifiable due to advanced for loops being immutable       
                 items = ballGroup[count]
@@ -1288,6 +1327,7 @@ try:
                         elif keys[K_s] and not keys[K_w]:
                             state = "quitsure"
                     elif keys[K_ESCAPE]:
+                        SCREEN.fill(BLACK)
                         state = "play"
                 elif "sure" in state:
                     if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
