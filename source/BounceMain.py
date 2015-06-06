@@ -430,7 +430,7 @@ try:
                              (0, 
                               centerpoint[1] - polar_coords[0][0] - 10, 
                               resX, 
-                              resY - (centerpoint[1] - polar_coords[0][0]) + 10)) #Fills a rectangle starting from the top of the paddle to the bottom of the screen.
+                              resY - (centerpoint[1] - polar_coords[0][0]) + 11)) #Fills a rectangle starting from the top of the paddle to the bottom of the screen.
             
             thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
             for num in range(1, 9):
@@ -441,7 +441,7 @@ try:
                                      (centerpoint[0] + (math.cos(thetapredict) * ((num + 1) * 20)), 
                                       centerpoint[1] + (math.sin(thetapredict) * ((num + 1) * 20))), 10) #Draws over old "prediction line" to make that area black again. This prevents unnecessary calls to the fill command.
             try:
-                pygame.draw.rect(SCREEN, BLACK, (0, 0, resX, launcherY + arrowsize))
+                pygame.draw.rect(SCREEN, BLACK, (0, 0, resX, launcherY + arrowsize + 1))
             except:
                 pass#Sometimes Python doesn't like this line of code, so we try it.
         else:
@@ -1389,6 +1389,7 @@ try:
 except: #Hopefully none of this ever has to get executed :)
     if not safeExit:
         import sys
+        import os
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         errors = ((exc_type, fname, exc_tb.tb_lineno, str(exc_obj)))
