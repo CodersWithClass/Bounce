@@ -10,7 +10,10 @@ TODO:
 try:
     display_init = False #If display is initialized, display killscreen if an error is encountered. Else, just log the error to prevent causing another error in the process of handling the original error.
     safeExit = False #This gets set to true when program has exited cleanly, for logging purposes.
-    import pygame._view
+    try:
+        import pygame._view #This appears to cause some problems.
+    except:
+        pass
     import pygame
     import pygame.mixer
     noSound = False #Keeps Pygame from throwing an error if no sound card is available
@@ -1318,12 +1321,15 @@ try:
                     
                     if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
                         if keys[K_UP] and not keys[K_DOWN]:
+                            SCREEN.fill(BLACK)
                             state = "play"
                         elif keys[K_DOWN] and not keys[K_UP]:
                             state = "quitsure"
                     elif keys[K_s] or keys[K_w]:
                         if keys[K_w] and not keys[K_s]: 
+                            SCREEN.fill(BLACK)
                             state = "play"
+                            
                         elif keys[K_s] and not keys[K_w]:
                             state = "quitsure"
                     elif keys[K_ESCAPE]:
