@@ -40,7 +40,7 @@ try:
     framerate = 60
     gametime = 0 #Milliseconds from start
     
-    version = "Bounce v1.2"
+    version = "Bounce v1.2rc Preliminary Release"
     
     
         #Set up display
@@ -253,6 +253,7 @@ try:
     #***ALL ANGLE MEASUREMENTS ARE IN RADIANS!!!***
     target_theta = 0 #The position the paddle should be in (radians)
     current_theta = 0#The current position of the paddle
+    goal_theta = 0 #autonomous paddle movement target value
     d_theta = 0 #Change of angle
     normal_d_theta = PI * 3.5 / 180 #Normal paddle speed
     focus_d_theta = PI * 1 / 180 #Focus mode paddle speed
@@ -454,7 +455,7 @@ try:
         
             
 #END BRAND NEW SCREEN FILL CODE!!! ############################################################
-        
+
         if dbgmode:
             if pygame.mouse.get_pressed()[2]:
                 launchtime = 0
@@ -475,6 +476,9 @@ try:
             target_theta -= d_theta
             #print(target_theta)
             current_theta += (target_theta - current_theta) * damp
+            if autobounce:
+                d_theta = (thetapredict - goal_theta) * .05
+                
             if dbgmode:
                 myLog.log(str(gametime) + "ms:     " + "PADDLE THETA: " + str(current_theta))
             for num in range(0, len(polar_coords)):
@@ -529,10 +533,10 @@ try:
     
                 #launchtime = gametime + random.randint(250, 2000) #Launches the ball some time in the future from current time. FUUUUTURE!!!
                 launchtime = gametime + 2000 - int(3100 / (1+math.e**(-0.03*score)) - 1550) + random.randint(-200, 200) #New difficulty model for the launch time--asymptotically decreases, with a minimum time of 250 ms between ball launches
-
+                #launchtime = gametime + 250
                 #ballspeed = random.randint(5, int(score / 3) + 5) #Old game difficulty model
-                ballspeed = int(105 / (1+math.e**(-0.013*score)) - 46) + random.randint(-2, 2) #New difficulty model--logistic curve that starts at 10, and plateaus at 60 to prevent balls from phasing through paddle
-
+                ballspeed = int(105 / (1+math.e**(-0.013*score)) - 46) + random.randint(-2, 2) #New difficulty model--logistic curve that starts at 10, and plateaus at 55 to prevent ludicrously fast balls
+                #ballspeed = 55
                 launcherdiffX = launcherX - centerpoint[0] #Differences in coordinates between paddle and ball launcher
                 launcherdiffY = launcherY - centerpoint[1] 
                 launcherdist = math.sqrt(launcherdiffX ** 2 + launcherdiffY ** 2)
@@ -544,6 +548,7 @@ try:
                 ballvel = (velX, velY)
                 
                 if autobounce:
+                    goal_theta = (math.atan2(GOALHEIGHT - centerpoint[1], auton_targetlist[ballcolor] - centerpoint[0]))
                     paddlecolorfade.forget()
                     paddlecolorfade.rewind()
                     arrowhelperU.forget()
@@ -584,17 +589,20 @@ try:
             if launchtime != None and  gametime >= launchtime:
                 if dbgmode:
                     ballcolor = paddlecolor
+                if autobounce: #This adds a bit of variation to the AI's aim, to prevent the ball from hitting the paddle at the same exact point on the paddle, lessening the occurrences of glitches.
+                    goal_theta = (math.atan2(GOALHEIGHT - centerpoint[1], auton_targetlist[ballcolor] + random.randint(-60, 60) - centerpoint[0]))
                 launchtime = None #There already is a ball on the field, so no need to use launchtime to suppress launcher.
                 ballGroup.append(Ball(SCREEN, colorlist[ballcolor], 
                                  (launcherX, launcherY), ballsize, ballvel, (0, 0), 
                                  attrlist[ballcolor]))
+                                                
                 if not noSound:
-                    if launchdir and bounceL.get_num_channels() <= 2:
+                    if launchdir:
                         
                         bounceL.play()
-                    elif bounceR.get_num_channels() <= 2:
+                    else:
                         bounceR.play()
-                
+
             #END BALL LAUNCHER CODE ########################################
 #Angle Prediction Line on Paddle ########################################
             thetapredict = -(math.atan2(centerpoint[1] - launcherY, centerpoint[0] - launcherX )) + 2*current_theta
@@ -605,15 +613,7 @@ try:
                                      (centerpoint[0] + (math.cos(thetapredict) * ((num + 1) * 20)), 
                                       centerpoint[1] + (math.sin(thetapredict) * ((num + 1) * 20))), 5) #Draws dashed "prediction line" showing ball's projected trajectory
             
-            if autobounce:
-                goal_theta = (math.atan2(GOALHEIGHT - centerpoint[1], auton_targetlist[paddlecolor] - centerpoint[0]))
-                            
-                d_theta = (thetapredict - goal_theta) * .05
-                if abs(d_theta) > max_d_theta:
-                    if d_theta >= 0:
-                        d_theta = max_d_theta
-                    else:
-                        d_theta = -max_d_theta
+            
                 
 #END Angle Prediction Line on Paddle ########################################            
                         
@@ -652,9 +652,9 @@ try:
                     if (items.coords[0] >= resX - items.radius or 
                             items.coords[0] <= items.radius):
                         if not noSound:
-                            if items.coords[0] >= resX - items.radius and bounceR.get_num_channels() <= 2:
+                            if items.coords[0] >= resX - items.radius:
                                 bounceR.play()
-                            elif bounceL.get_num_channels() <= 2:
+                            else:
                                 bounceL.play()
                         items.bounceX()
                         
@@ -666,7 +666,7 @@ try:
                         if int(items.coords[0]) in goallist[attrlist.index(items.property)] or dbgmode: #Correct Goal
                             consecutive += 1
                             score += 1
-                            if not noSound and correct.get_num_channels() <= 2: #Makes sound play once and only once
+                            if not noSound:
                                 correct.play()
                         else: #Incorrect Goal
                             if not dbgmode:
@@ -680,12 +680,13 @@ try:
                                     pygame.mixer.music.play(loops = -1, start = (musicpos - (23997.0 * int(musicpos / 23997.0))) * .00075)
                             windowshake.rewind()
                             windowshake.trigger()
-                            if not noSound and fail.get_num_channels() <= 2:
+                            if not noSound:
                                 fail.play()
                         del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
                         
                     if (items.coords[1] >= centerpoint[1] - polar_coords[0][0] and 
-                        attrlist.index(items.property) == paddlecolor):
+                        attrlist.index(items.property) == paddlecolor):  #Paddle physics are only enabled if the ball is in contact with the ball
+
                         ##BEGIN COLLIDER CODE#################################################################
                         
                         p1 = pointlist[0]#Upper left corner of paddle mesh
@@ -696,8 +697,7 @@ try:
                         d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
                         d2 = math.sqrt((items.coords[1] - p2[1])**2 + (items.coords[0] - p2[0])**2)
                         dist = d1 * math.sin(theta1)
-                        if (abs(theta1) <= PI/2 and abs(theta2) <= PI/2) and ((dist < 10 and dist > -100)):
-                            #Paddle physics are only enabled if the ball is in contact with the ball
+                        if (abs(theta1) <= PI/2 and abs(theta2) <= PI/2) and ((dist < 10 and dist > -2 * paddle_height) or ((dist - ballspeed) < (-2 * paddle_height) and dist > 10)):
                             
                             #PADDLE PHYSICS##################################################################
                             #This section includes any code that modifies the ball's velocity as a direct result of the paddle
@@ -707,22 +707,19 @@ try:
                             items.vel[0] = (math.cos(thetaV2) * length) 
                             items.vel[1] = (math.sin(thetaV2) * length) 
                             old_dist = dist #compares distance moved when ball is animated. This keeps the bottom loop from getting stuck and overflowing if ball doesn't move much between frames.  
-
+                            dist = d1 * math.sin(theta1)
                             theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
                             d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
-                            
-                            maxcount = 0 #Maximum number of times physics engine can try simulating ball before giving up
-                            while dist < 11 and maxcount < 100: #This keeps ball from getting "stuck" in paddle by repeatedly trying to move the ball outside the paddle until ball is a set distance away, but also prevents game from hanging if ball bounces "the other way"
-                                items.coords[0] += items.vel[0] * .1
+                  
+                            while (abs(theta1) <= PI/2 and abs(theta2) <= PI/2) and ((dist < 10) or ((dist - ballspeed) < (-2 * paddle_height) and dist > 10)): #This keeps ball from getting "stuck" in paddle by repeatedly trying to move the ball outside the paddle until ball is a set distance away, but also prevents game from hanging if ball bounces "the other way"
+                                items.coords[0] += items.vel[0]
                                 items.coords[1] += items.vel[1]
                                 dist = d1 * math.sin(theta1)
                                 if abs(old_dist - dist) < .1:
                                     break #Kicks out of potential infinite loop situation.
                                 theta1 = -math.atan2((items.coords[1] - p1[1]), (items.coords[0] - p1[0])) + current_theta #Ball's polar position relative to p1
                                 d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
-                                maxcount += 1
-                                
-                            if not noSound and correct.get_num_channels() <= 2:
+                            if not noSound:
                                 correct.play()
                             if dbgmode:
                                 myLog.log(str(gametime) + "ms:     " + "REFLECTED THETA: " + str(math.degrees(thetaV2))) #Outputs angle of reflected velocity if uncommented
@@ -754,10 +751,7 @@ try:
             if strikes > 0 and strikes <= maxstrikes:
                 strikelist[-strikes].trigger()
             if strikes >= maxstrikes:
-                if autobounce:
-                    state = "newgame"
-                else:
-                    state = "gameover"
+                state = "gameover"
             for num in range(maxstrikes):
                 strikelist[num].step()
                 pygame.gfxdraw.filled_circle(SCREEN, resX - ((num + 1) * 50), resY - 75, 14, strikelist[num].position)
@@ -770,15 +764,7 @@ try:
             scorerect = scorelabel.get_rect()
             scorerect.bottomleft = (50, resY - 60)
             SCREEN.blit(scorelabel, scorerect.topleft)
-            
-            if autobounce: #Lets player know game is playing in auto mode.
-                demomode = scorefont.render("Demo Mode. Press a key.", 1, WHITE)
-                demorect = demomode.get_rect()
-                
-                demorect.center = (dispmidpointX, dispmidpointY)
-                SCREEN.fill(BLACK, demorect)
-                SCREEN.blit(demomode, demorect.topleft)
-                
+        
         ##MAIN MENU CODE#################################################################################
         elif state == "keys": #Shows the beginning help image with key controls
             keyimage.display(keyrect.topleft)
@@ -793,7 +779,6 @@ try:
             
         elif "menu" in state: #Any state that contains the word "Menu"
             if state == "menustart": #Loads up default states for all animations, variables, etc. that relate to the state of the menu
-                menutime = gametime
                 savefile = open('savefile.txt', 'r')
                 rawscore = savefile.readline()[:-1].split()
                 highscore = int(rawscore[0])
@@ -831,9 +816,6 @@ try:
                 creditspush.backstep()
                 scorespush.done = False
                 scorespush.backstep()
-                if gametime > menutime + 60000:
-                    state = "newgame"
-                    autobounce = True
             elif state == "menuplay":
                 goalactionlist[0].done = False
                 goalactionlist[0].backstep()
@@ -1051,7 +1033,6 @@ try:
     
         ##BEGIN PAUSE MENU CODE#################################################################################
         if state =="resetmenu":
-            
             if not noSound:
                 pygame.mixer.music.stop()
             goalactionlist = []
@@ -1062,7 +1043,6 @@ try:
             menuselect = 0
             state = "menustart"
         if state =="newgame":
-            SCREEN.fill(BLACK)
             if not noSound:
                 pygame.mixer.music.load('assets/BounceBGM.ogg')
                 pygame.mixer.music.set_volume(1)
@@ -1147,123 +1127,119 @@ try:
                             pygame.quit()
                             sys.exit()
                 if state == "play":
-                    if autobounce:
-                        state = "resetmenu"
-                        autobounce = False
-                    else:
-                        if dbgmode and keys[K_m]: #Matrix button slows down action
-                            framerate = 1
-                        if not autobounce:
-                            if keys[K_RSHIFT] or keys[K_LSHIFT] or keys[K_SPACE]: #Pressing SHIFT or SPACE gives focused control
-                                max_d_theta = focus_d_theta #Paddle Rotation Speed
-                            else:
-                                max_d_theta = normal_d_theta #Paddle Rotation Speed
-                            if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
-                                if keys[K_LEFT] and not keys[K_RIGHT]:
-                                    d_theta = max_d_theta
-                                if keys[K_RIGHT] and not keys[K_LEFT]:
-                                    d_theta = -max_d_theta
-                            elif keys[K_a] or keys[K_d]:
-                                if keys[K_a] and not keys[K_d]: 
-                                    d_theta = max_d_theta
-                                if keys[K_d] and not keys[K_a]:
-                                    d_theta = -max_d_theta
-                            if keys[K_1] or keys[K_2] or keys[K_3] or keys[K_4]:
-                                paddlecolorfade.forget()
-                                paddlecolorfade.rewind()
-                                arrowhelperU.forget()
-                                arrowhelperU.rewind()
-                                arrowhelperD.forget()
-                                arrowhelperD.rewind()
-                                paddlecolorfade.start = colorlist[paddlecolor]
-                                arrowhelperU.start = colorlistU[paddlecolor]
-                                arrowhelperD.start = colorlistD[paddlecolor]
+                    if dbgmode and keys[K_m]: #Matrix button slows down action
+                        framerate = 1
+                    if not autobounce:
+                        if keys[K_RSHIFT] or keys[K_LSHIFT] or keys[K_SPACE]: #Pressing SHIFT or SPACE gives focused control
+                            max_d_theta = focus_d_theta #Paddle Rotation Speed
+                        else:
+                            max_d_theta = normal_d_theta #Paddle Rotation Speed
+                        if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
+                            if keys[K_LEFT] and not keys[K_RIGHT]:
+                                d_theta = max_d_theta
+                            if keys[K_RIGHT] and not keys[K_LEFT]:
+                                d_theta = -max_d_theta
+                        elif keys[K_a] or keys[K_d]:
+                            if keys[K_a] and not keys[K_d]: 
+                                d_theta = max_d_theta
+                            if keys[K_d] and not keys[K_a]:
+                                d_theta = -max_d_theta
+                        if keys[K_1] or keys[K_2] or keys[K_3] or keys[K_4]:
+                            paddlecolorfade.forget()
+                            paddlecolorfade.rewind()
+                            arrowhelperU.forget()
+                            arrowhelperU.rewind()
+                            arrowhelperD.forget()
+                            arrowhelperD.rewind()
+                            paddlecolorfade.start = colorlist[paddlecolor]
+                            arrowhelperU.start = colorlistU[paddlecolor]
+                            arrowhelperD.start = colorlistD[paddlecolor]
+                            
+                            if keys[K_1]:
+                                paddlecolor = 3
+                            elif keys[K_2]:
+                                paddlecolor = 2
+                            elif keys[K_3]:
+                                paddlecolor = 1
+                            elif keys[K_4]:
+                                paddlecolor = 0
+                            
+                            paddlecolorfade.end = colorlist[paddlecolor]
+                            arrowhelperU.end = colorlistU[paddlecolor]
+                            arrowhelperD.end = colorlistD[paddlecolor]
+                            
+                            paddlecolorfade.render()
+                            paddlecolorfade.trigger()
+                            arrowhelperU.render()
+                            arrowhelperU.trigger()
+                            arrowhelperD.render()
+                            arrowhelperD.trigger()
+                            
+                        if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
+                            paddlecolorfade.forget()
+                            paddlecolorfade.rewind()
+                            arrowhelperU.forget()
+                            arrowhelperU.rewind()
+                            arrowhelperD.forget()
+                            arrowhelperD.rewind()
+                            paddlecolorfade.start = colorlist[paddlecolor]
+                            arrowhelperU.start = colorlistU[paddlecolor]
+                            arrowhelperD.start = colorlistD[paddlecolor]
+                            
+                            if keys[K_UP] and not keys[K_DOWN]:
                                 
-                                if keys[K_1]:
+                                paddlecolor -= 1
+                                if paddlecolor < 0:
                                     paddlecolor = 3
-                                elif keys[K_2]:
-                                    paddlecolor = 2
-                                elif keys[K_3]:
-                                    paddlecolor = 1
-                                elif keys[K_4]:
+                                
+                            elif keys[K_DOWN] and not keys[K_UP]:
+                                paddlecolor += 1
+                                if paddlecolor > 3:
                                     paddlecolor = 0
-                                
-                                paddlecolorfade.end = colorlist[paddlecolor]
-                                arrowhelperU.end = colorlistU[paddlecolor]
-                                arrowhelperD.end = colorlistD[paddlecolor]
-                                
-                                paddlecolorfade.render()
-                                paddlecolorfade.trigger()
-                                arrowhelperU.render()
-                                arrowhelperU.trigger()
-                                arrowhelperD.render()
-                                arrowhelperD.trigger()
-                                
-                            if keys[K_UP] or keys[K_DOWN]: #Directional control defaults to look for arrows before WASD
-                                paddlecolorfade.forget()
-                                paddlecolorfade.rewind()
-                                arrowhelperU.forget()
-                                arrowhelperU.rewind()
-                                arrowhelperD.forget()
-                                arrowhelperD.rewind()
-                                paddlecolorfade.start = colorlist[paddlecolor]
-                                arrowhelperU.start = colorlistU[paddlecolor]
-                                arrowhelperD.start = colorlistD[paddlecolor]
-                                
-                                if keys[K_UP] and not keys[K_DOWN]:
-                                    
-                                    paddlecolor -= 1
-                                    if paddlecolor < 0:
-                                        paddlecolor = 3
-                                    
-                                elif keys[K_DOWN] and not keys[K_UP]:
-                                    paddlecolor += 1
-                                    if paddlecolor > 3:
-                                        paddlecolor = 0
-        
-                                paddlecolorfade.end = colorlist[paddlecolor]
-                                arrowhelperU.end = colorlistU[paddlecolor]
-                                arrowhelperD.end = colorlistD[paddlecolor]
-                                
-                                paddlecolorfade.render()
-                                paddlecolorfade.trigger()
-                                arrowhelperU.render()
-                                arrowhelperU.trigger()
-                                arrowhelperD.render()
-                                arrowhelperD.trigger()
-        
-                            elif keys[K_s] or keys[K_w]:
-                                
-                                paddlecolorfade.forget()
-                                paddlecolorfade.rewind()
-                                arrowhelperU.forget()
-                                arrowhelperU.rewind()
-                                arrowhelperD.forget()
-                                arrowhelperD.rewind()
-                                paddlecolorfade.start = colorlist[paddlecolor]
-                                arrowhelperU.start = colorlistU[paddlecolor]
-                                arrowhelperD.start = colorlistD[paddlecolor]
-                                
-                                if keys[K_w] and not keys[K_s]: 
-                                    paddlecolor -= 1
-                                    if paddlecolor < 0:
-                                        paddlecolor = 3
-                                elif keys[K_s] and not keys[K_w]:
-                                    paddlecolor += 1
-                                    if paddlecolor > 3:
-                                        paddlecolor = 0
-                                paddlecolorfade.end = colorlist[paddlecolor]
-                                arrowhelperU.end = colorlistU[paddlecolor]
-                                arrowhelperD.end = colorlistD[paddlecolor]
-                                paddlecolorfade.render()
-                                paddlecolorfade.trigger()
-                                arrowhelperU.render()
-                                arrowhelperU.trigger()
-                                arrowhelperD.render()
-                                arrowhelperD.trigger()
     
-                        if keys[K_ESCAPE]:
-                            state = "paused"
+                            paddlecolorfade.end = colorlist[paddlecolor]
+                            arrowhelperU.end = colorlistU[paddlecolor]
+                            arrowhelperD.end = colorlistD[paddlecolor]
+                            
+                            paddlecolorfade.render()
+                            paddlecolorfade.trigger()
+                            arrowhelperU.render()
+                            arrowhelperU.trigger()
+                            arrowhelperD.render()
+                            arrowhelperD.trigger()
+    
+                        elif keys[K_s] or keys[K_w]:
+                            
+                            paddlecolorfade.forget()
+                            paddlecolorfade.rewind()
+                            arrowhelperU.forget()
+                            arrowhelperU.rewind()
+                            arrowhelperD.forget()
+                            arrowhelperD.rewind()
+                            paddlecolorfade.start = colorlist[paddlecolor]
+                            arrowhelperU.start = colorlistU[paddlecolor]
+                            arrowhelperD.start = colorlistD[paddlecolor]
+                            
+                            if keys[K_w] and not keys[K_s]: 
+                                paddlecolor -= 1
+                                if paddlecolor < 0:
+                                    paddlecolor = 3
+                            elif keys[K_s] and not keys[K_w]:
+                                paddlecolor += 1
+                                if paddlecolor > 3:
+                                    paddlecolor = 0
+                            paddlecolorfade.end = colorlist[paddlecolor]
+                            arrowhelperU.end = colorlistU[paddlecolor]
+                            arrowhelperD.end = colorlistD[paddlecolor]
+                            paddlecolorfade.render()
+                            paddlecolorfade.trigger()
+                            arrowhelperU.render()
+                            arrowhelperU.trigger()
+                            arrowhelperD.render()
+                            arrowhelperD.trigger()
+
+                    elif keys[K_ESCAPE]:
+                        state = "paused"
                 elif state == "keys":
                     if keys[K_SPACE] or keys[K_RETURN]:
                         state = "newgame"
@@ -1303,7 +1279,6 @@ try:
                         colorlistD = [YELLOW, GREEN, BLUE, RED] #Shifted forwards by 1
                         framerate = 10
                 elif state == "menu": #Menu controls
-                    menutime = gametime
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_LEFT] and not keys[K_RIGHT]:
                             menuselect -= 1
@@ -1346,9 +1321,6 @@ try:
                         state = "menu"     
                         
                 elif state =="gameover":
-                    if autobounce:
-                        state = "resetmenu"
-                        autobounce = False
                     if keys[K_LEFT] or keys[K_RIGHT]: #Directional control defaults to look for arrows before WASD
                         if keys[K_RIGHT] and not keys[K_LEFT]:
                             state = "resetmenu"
@@ -1464,7 +1436,6 @@ try:
 
 except: #Hopefully none of this ever has to get executed :)
     if not safeExit:
-        print("OOPS!")
         import sys
         import os
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -1511,7 +1482,7 @@ except: #Hopefully none of this ever has to get executed :)
                         pygame.quit()
                         sys.exit()
                                 
-print("Program exited.")
+
 
 '''
     Coded with Class by the {CWC} Community in Greenwood, Indiana, USA
