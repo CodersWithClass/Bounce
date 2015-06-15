@@ -589,10 +589,10 @@ try:
                                  (launcherX, launcherY), ballsize, ballvel, (0, 0), 
                                  attrlist[ballcolor]))
                 if not noSound:
-                    if launchdir and bounceL.get_num_channels() <= 2:
+                    if launchdir:
                         
                         bounceL.play()
-                    elif bounceR.get_num_channels() <= 2:
+                    else:
                         bounceR.play()
                 
             #END BALL LAUNCHER CODE ########################################
@@ -652,9 +652,9 @@ try:
                     if (items.coords[0] >= resX - items.radius or 
                             items.coords[0] <= items.radius):
                         if not noSound:
-                            if items.coords[0] >= resX - items.radius and bounceR.get_num_channels() <= 2:
+                            if items.coords[0] >= resX - items.radius:
                                 bounceR.play()
-                            elif bounceL.get_num_channels() <= 2:
+                            else:
                                 bounceL.play()
                         items.bounceX()
                         
@@ -666,7 +666,7 @@ try:
                         if int(items.coords[0]) in goallist[attrlist.index(items.property)] or dbgmode: #Correct Goal
                             consecutive += 1
                             score += 1
-                            if not noSound and correct.get_num_channels() <= 2: #Makes sound play once and only once
+                            if not noSound: #Makes sound play once and only once
                                 correct.play()
                         else: #Incorrect Goal
                             if not dbgmode:
@@ -680,7 +680,7 @@ try:
                                     pygame.mixer.music.play(loops = -1, start = (musicpos - (23997.0 * int(musicpos / 23997.0))) * .00075)
                             windowshake.rewind()
                             windowshake.trigger()
-                            if not noSound and fail.get_num_channels() <= 2:
+                            if not noSound:
                                 fail.play()
                         del(ballGroup[count]) #Deletes ball from system if it hits goal zone and collision registered.
                         
@@ -722,7 +722,7 @@ try:
                                 d1 = math.sqrt((items.coords[1] - p1[1])**2 + (items.coords[0] - p1[0])**2) #Straight-line distance between paddle and ball--this forms the hypontenuse of the right triangle which we will use to determine tangency
                                 maxcount += 1
                                 
-                            if not noSound and correct.get_num_channels() <= 2:
+                            if not noSound:
                                 correct.play()
                             if dbgmode:
                                 myLog.log(str(gametime) + "ms:     " + "REFLECTED THETA: " + str(math.degrees(thetaV2))) #Outputs angle of reflected velocity if uncommented
